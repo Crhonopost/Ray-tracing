@@ -61,6 +61,11 @@
       "cwd": "/home/e20210003581/Bureau/Travail/sem1/prog3D/HAI719I_Raytracer",
       "binaryPath": "/home/e20210003581/Bureau/Travail/sem1/prog3D/HAI719I_Raytracer/main",
       "binaryArgs": []
+    },
+    {
+      "cwd": "/home/crhonopost/Documents/cours/fac/semestre1/prog3D/HAI719I_Raytracer",
+      "binaryPath": "/home/crhonopost/Documents/cours/fac/semestre1/prog3D/HAI719I_Raytracer/main",
+      "binaryArgs": []
     }
   ]
 }
