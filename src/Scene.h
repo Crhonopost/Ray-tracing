@@ -123,7 +123,7 @@ public:
 
 
     Vec3 specular(Vec3 sourceI, Vec3 reflexionCoef, Vec3 lightPos, Vec3 intersectionPos, Vec3 surfaceNormal, Vec3 directionToEye){
-        int n = 10;
+        int n = 5;
 
         Vec3 intersectionToLight = lightPos - intersectionPos; // L
         intersectionToLight.normalize();
@@ -136,6 +136,37 @@ public:
         
         Vec3 specularIntensity = Vec3::compProduct(sourceI, reflexionCoef) * pow(rDotV, n);
         return specularIntensity;
+    }
+
+
+    bool isInShadow(Vec3 intersectionPos, Vec3 lightPos){
+        Vec3 direction = lightPos - intersectionPos;
+        float length = direction.length();
+        direction.normalize();
+        Ray ray = Ray(intersectionPos, direction);
+
+        bool isHidden = false;
+        size_t i=0;
+        while(!isHidden && i < spheres.size()){
+            Sphere sphere = spheres[i];
+            RaySphereIntersection intersection = sphere.intersect(ray);
+            if(intersection.intersectionExists && intersection.t > 0.001 && intersection.t < length){
+                isHidden = true;
+            }
+            i++;
+        }
+        i=0;
+        while(!isHidden && i < squares.size()){
+            Square square = squares[i];
+            RaySquareIntersection intersection = square.intersect(ray);
+            if(intersection.intersectionExists && intersection.t > 0.001 && intersection.t < length){
+                isHidden = true;
+            }
+            i++;
+        }
+
+        return isHidden;
+
     }
 
 
@@ -167,8 +198,13 @@ public:
                 intersectionPosition = raySceneIntersection.raySquareIntersection.intersection;
                 break;            
             default:
-                color = Vec3(0.1,0.1,1.0);
+                return Vec3(0.1,0.1,1.0);
                 break;
+            }
+
+            // shadow casting
+            if(isInShadow(intersectionPosition, light.pos)){
+                return Vec3(0., 0., 0.);
             }
 
 
@@ -272,8 +308,8 @@ public:
             s.scale(Vec3(2., 2., 1.));
             s.translate(Vec3(0., 0., -2.));
             s.build_arrays();
-            s.material.diffuse_material = Vec3( 1.,1.,1. );
-            s.material.specular_material = Vec3( 1.,1.,1. );
+            s.material.diffuse_material = Vec3( 0.5,0.,0.5 );
+            s.material.specular_material = Vec3( 0.5,0.,0.5 );
             s.material.shininess = 16;
         }
 
