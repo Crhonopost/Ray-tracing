@@ -122,6 +122,23 @@ public:
     }
 
 
+    Vec3 specular(Vec3 sourceI, Vec3 reflexionCoef, Vec3 lightPos, Vec3 intersectionPos, Vec3 surfaceNormal, Vec3 directionToEye){
+        int n = 10;
+
+        Vec3 intersectionToLight = lightPos - intersectionPos; // L
+        intersectionToLight.normalize();
+
+        Vec3 r = (2. * Vec3::dot(intersectionToLight, surfaceNormal) * surfaceNormal) - intersectionToLight;
+        r.normalize();
+
+        float rDotV = Vec3::dot(r, directionToEye);
+        rDotV = std::max(0.0f, rDotV);
+        
+        Vec3 specularIntensity = Vec3::compProduct(sourceI, reflexionCoef) * pow(rDotV, n);
+        return specularIntensity;
+    }
+
+
 
 
 
@@ -156,14 +173,14 @@ public:
 
 
             Vec3 sourceIntensity = light.material;
-            Vec3 intersectionToLight = light.pos - intersectionPosition; // L
-            intersectionToLight.normalize();
 
             // diffuse
             Vec3 diffuseIntensity = diffuse(sourceIntensity, material.diffuse_material, light.pos, intersectionPosition, intersectionNormal);
 
-            color = diffuseIntensity;
-            
+            // specular
+            Vec3 specularIntensity = specular(sourceIntensity, material.specular_material, light.pos, intersectionPosition, intersectionNormal, -1. * ray.direction());
+
+            color = diffuseIntensity + specularIntensity;
         }
         return color;
     }
@@ -255,7 +272,7 @@ public:
             s.scale(Vec3(2., 2., 1.));
             s.translate(Vec3(0., 0., -2.));
             s.build_arrays();
-            s.material.diffuse_material = Vec3( 1.,0.,1. );
+            s.material.diffuse_material = Vec3( 1.,1.,1. );
             s.material.specular_material = Vec3( 1.,1.,1. );
             s.material.shininess = 16;
         }
