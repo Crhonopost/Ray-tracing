@@ -56,8 +56,6 @@ public:
         triangles[1][0] = 0;
         triangles[1][1] = 2;
         triangles[1][2] = 3;
-
-
     }
 
     RaySquareIntersection intersect(const Ray &ray) const {

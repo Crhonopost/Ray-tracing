@@ -122,9 +122,7 @@ public:
     }
 
 
-    Vec3 specular(Vec3 sourceI, Vec3 reflexionCoef, Vec3 lightPos, Vec3 intersectionPos, Vec3 surfaceNormal, Vec3 directionToEye){
-        int n = 5;
-
+    Vec3 specular(Vec3 sourceI, Vec3 reflexionCoef, Vec3 lightPos, Vec3 intersectionPos, Vec3 surfaceNormal, Vec3 directionToEye, int n){
         Vec3 intersectionToLight = lightPos - intersectionPos; // L
         intersectionToLight.normalize();
 
@@ -137,6 +135,48 @@ public:
         Vec3 specularIntensity = Vec3::compProduct(sourceI, reflexionCoef) * pow(rDotV, n);
         return specularIntensity;
     }
+
+    float sampleSphereLight(Vec3 intersectionPos, Vec3 lightPos, float radius, int sampleCount){
+        float shadowCount = 0;
+        for(int i=0; i<sampleCount; i++){
+            float randX =  (random() % 1000) - 500;
+            float randY =  (random() % 1000) - 500;
+            float randZ =  (random() % 1000) - 500;
+
+            // rotation du vec (0,0,1) autour de l'axe Y
+            Vec3 position = Vec3(randX, randY, randZ);
+            position.normalize();
+            position *= radius;
+
+            Vec3 areaLightPos = lightPos + position;
+            if(isInShadow(intersectionPos, areaLightPos)){
+                shadowCount += 1.;
+            }
+        }
+
+        return shadowCount / (float) sampleCount;
+    }
+    // float sampleShadowArea(Vec3 intersectionPos, Vec3 lightPos, float areaSize, int sampleCount){
+    //     Vec3 direction = lightPos - intersectionPos;
+    //     Vec3 up = Vec3(0, 1, 0);
+    //     Vec3 left = Vec3::cross(up, direction);
+    //     left.normalize();
+    //     Vec3 top = Vec3::cross(up, left);
+
+    //     float shadowCount = 0;
+
+    //     for(int i=0; i<sampleCount; i++){
+    //         float randX = (-areaSize * 0.5) + areaSize / (float) (random() % 100);
+    //         float randY = (-areaSize * 0.5) + areaSize / (float) (random() % 100);
+
+    //         Vec3 areaLightPos = lightPos + randX * left + randY * top;
+    //         if(isInShadow(intersectionPos, areaLightPos)){
+    //             shadowCount ++;
+    //         }
+    //     }
+
+    //     return shadowCount / (float) sampleCount;
+    // }
 
 
     bool isInShadow(Vec3 intersectionPos, Vec3 lightPos){
@@ -177,7 +217,6 @@ public:
         RaySceneIntersection raySceneIntersection = computeIntersection(ray);
         Vec3 color = Vec3{0.1, 0.2, 0.3};
         Light light = lights[0];
-        int n = 5;
 
         if(raySceneIntersection.intersectionExists){
             Vec3 intersectionPosition, intersectionNormal;
@@ -203,20 +242,18 @@ public:
             }
 
             // shadow casting
-            if(isInShadow(intersectionPosition, light.pos)){
-                return Vec3(0., 0., 0.);
-            }
-
-
+            float shadowStrength = sampleSphereLight(intersectionPosition, light.pos, light.radius, 50);
+            // float shadowStrength = isInShadow(intersectionPosition, light.pos);
+            
             Vec3 sourceIntensity = light.material;
 
             // diffuse
             Vec3 diffuseIntensity = diffuse(sourceIntensity, material.diffuse_material, light.pos, intersectionPosition, intersectionNormal);
 
             // specular
-            Vec3 specularIntensity = specular(sourceIntensity, material.specular_material, light.pos, intersectionPosition, intersectionNormal, -1. * ray.direction());
+            Vec3 specularIntensity = specular(sourceIntensity, material.specular_material, light.pos, intersectionPosition, intersectionNormal, -1. * ray.direction(), material.shininess);
 
-            color = diffuseIntensity + specularIntensity;
+            color = (1. - shadowStrength) * (diffuseIntensity + specularIntensity);
         }
         return color;
     }
