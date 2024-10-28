@@ -116,7 +116,7 @@ public:
         intersectionToLight.normalize();
 
         double dotProduct = Vec3::dot(intersectionToLight, surfaceNormal);
-        Vec3 diffuseI = Vec3::compProduct(sourceI, reflexionCoef) * (dotProduct > 0. ? dotProduct : 0.);
+        Vec3 diffuseI = Vec3::compProduct(sourceI, reflexionCoef) * std::max(dotProduct, 0.);
         
         return diffuseI;
     }
@@ -138,10 +138,11 @@ public:
 
     float sampleSphereLight(Vec3 intersectionPos, Vec3 lightPos, float radius, int sampleCount){
         float shadowCount = 0;
+        int halfRandMax = RAND_MAX / 2;
         for(int i=0; i<sampleCount; i++){
-            float randX =  (random() % 1000) - 500;
-            float randY =  (random() % 1000) - 500;
-            float randZ =  (random() % 1000) - 500;
+            float randX =  random() - halfRandMax;
+            float randY =  random() - halfRandMax;
+            float randZ =  random() - halfRandMax;
 
             // rotation du vec (0,0,1) autour de l'axe Y
             Vec3 position = Vec3(randX, randY, randZ);

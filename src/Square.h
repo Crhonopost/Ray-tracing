@@ -62,18 +62,21 @@ public:
         RaySquareIntersection intersection;
         intersection.intersectionExists = false;
 
+        // solution provisoire trouvée par Tom pour récupérer les bonnes valeurs du quad
         Vec3 m_bottom_left = vertices[0].position;
         Vec3 m_right_vector = vertices[1].position - vertices[0].position;
         Vec3 m_up_vector = vertices[3].position - vertices[0].position;
         Vec3 m_normal = Vec3::cross(m_right_vector, m_up_vector);
         m_normal.normalize();
 
+        // Face culling
         if(Vec3::dot(ray.direction(), m_normal) > 0) return intersection;
 
+        // Intersection du rayon avec le plan
         float D = Vec3::dot(m_bottom_left, m_normal);
-
         float t = ( D - Vec3::dot(ray.origin(), m_normal)) / Vec3::dot(ray.direction(), m_normal);
 
+        // Il y a une intersection avec le plan
         if(t>0 && !std::isinf(t)){
             Vec3 position = ray.origin() + t * ray.direction();
 
@@ -81,6 +84,7 @@ public:
             float u = Vec3::dot(d, m_right_vector) / m_right_vector.squareLength();
             float v = Vec3::dot(d, m_up_vector) / m_up_vector.squareLength();
 
+            // Le point se situe dans les limites du quad
             if(u>=0 && u<=1.0 && v>=0 && v<=1.0){
                 intersection.intersectionExists = true;
                 intersection.t = t;

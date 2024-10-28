@@ -115,6 +115,14 @@ public:
             
             intersection.normal = intersection.intersection - m_center;
             intersection.normal.normalize();
+        } else if (discriminant == 0){
+            float t = -b / (2. * a);
+            intersection.t = t;
+            intersection.intersection = ray.origin() + dir * t;
+            
+            intersection.normal = intersection.intersection - m_center;
+            intersection.normal.normalize();
+            intersection.intersectionExists = true;
         }
         return intersection;
     }
