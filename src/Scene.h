@@ -110,30 +110,24 @@ public:
         return result;
     }
 
-
-    Vec3 diffuse(Vec3 sourceI, Vec3 reflexionCoef, Vec3 lightPos, Vec3 intersectionPos, Vec3 surfaceNormal){
-        Vec3 intersectionToLight = lightPos - intersectionPos; // L
-        intersectionToLight.normalize();
-
-        double dotProduct = Vec3::dot(intersectionToLight, surfaceNormal);
-        Vec3 diffuseI = Vec3::compProduct(sourceI, reflexionCoef) * std::max(dotProduct, 0.);
+    Vec3 phong(Vec3 sourceIntensity, Vec3 lightPos, Vec3 intersectionPos, Vec3 surfaceNormal, Vec3 directionToEye, Material material){
+        Vec3 directionToLight = lightPos - intersectionPos;
+        directionToLight.normalize();
         
-        return diffuseI;
-    }
+        float theta = Vec3::dot(surfaceNormal, directionToLight);
 
+        // ambiant
+        Vec3 ambiant = Vec3::compProduct(sourceIntensity, material.ambient_material);
 
-    Vec3 specular(Vec3 sourceI, Vec3 reflexionCoef, Vec3 lightPos, Vec3 intersectionPos, Vec3 surfaceNormal, Vec3 directionToEye, int n){
-        Vec3 intersectionToLight = lightPos - intersectionPos; // L
-        intersectionToLight.normalize();
+        // diffuse
+        Vec3 diffuse = Vec3::compProduct(sourceIntensity, material.diffuse_material) * std::max(theta, 0.f);
 
-        Vec3 r = (2. * Vec3::dot(intersectionToLight, surfaceNormal) * surfaceNormal) - intersectionToLight;
-        r.normalize();
+        // specular
+        Vec3 r = 2. * theta * surfaceNormal - directionToLight;
+        float rDotV = std::max(0.0f,Vec3::dot(r, directionToEye));
+        Vec3 specular = Vec3::compProduct(sourceIntensity, material.specular_material) * pow(rDotV, material.shininess);
 
-        float rDotV = Vec3::dot(r, directionToEye);
-        rDotV = std::max(0.0f, rDotV);
-        
-        Vec3 specularIntensity = Vec3::compProduct(sourceI, reflexionCoef) * pow(rDotV, n);
-        return specularIntensity;
+        return ambiant + diffuse + specular;
     }
 
     float sampleSphereLight(Vec3 intersectionPos, Vec3 lightPos, float radius, int sampleCount){
@@ -243,18 +237,11 @@ public:
             }
 
             // shadow casting
-            float shadowStrength = sampleSphereLight(intersectionPosition, light.pos, light.radius, 50);
-            // float shadowStrength = isInShadow(intersectionPosition, light.pos);
+            float shadowStrength = sampleSphereLight(intersectionPosition, light.pos, light.radius, 10);
             
-            Vec3 sourceIntensity = light.material;
+            color = phong(light.material, light.pos, intersectionPosition, intersectionNormal, -1 * ray.direction(), material);
 
-            // diffuse
-            Vec3 diffuseIntensity = diffuse(sourceIntensity, material.diffuse_material, light.pos, intersectionPosition, intersectionNormal);
-
-            // specular
-            Vec3 specularIntensity = specular(sourceIntensity, material.specular_material, light.pos, intersectionPosition, intersectionNormal, -1. * ray.direction(), material.shininess);
-
-            color = (1. - shadowStrength) * (diffuseIntensity + specularIntensity);
+            color *= (1. - shadowStrength);
         }
         return color;
     }
