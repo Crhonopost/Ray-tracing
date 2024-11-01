@@ -84,6 +84,11 @@ public:
         res[c2] = -mVals[c1];
         return res;
     }
+
+    static Vec3 lerp(Vec3 a, Vec3 b, float delta){
+        Vec3 c = {b[0] - a[0], b[1] - a[1], b[2] - a[2]};
+        return a + delta * c;
+    }
 };
 
 static inline Vec3 operator + (Vec3 const & a , Vec3 const & b) {
