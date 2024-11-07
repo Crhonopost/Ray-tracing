@@ -139,9 +139,9 @@ public:
             float randX =  (random() % 360) * degToRad;
 
             // rotation du vec (0,0,1) autour de l'axe Y
-            Vec3 position = {-sin(randY),0,cos(randY)};
+            Vec3 position = {0, -sin(randY),cos(randY)};
 
-            position[1] = -sin(randX) * position[2];
+            position[0] = -sin(randX) * position[2];
             position[2] = cos(randX) * position[2];
 
             position *= radius;
@@ -241,19 +241,26 @@ public:
                 break;
             }
 
-            // shadow casting
-            float shadowStrength = sampleSphereLight(intersectionPosition, light.pos, light.radius, 45);
-            
-            color = phong(light.material, light.pos, intersectionPosition, intersectionNormal, -1 * ray.direction(), material);
+            if(material.type == Material_Diffuse_Blinn_Phong || NRemainingBounces<=0){
+                // shadow casting
+                float shadowStrength = sampleSphereLight(intersectionPosition, light.pos, light.radius, 45);
+                // float shadowStrength = isInShadow(intersectionPosition, light.pos);
+                
+                color = phong(light.material, light.pos, intersectionPosition, intersectionNormal, -1 * ray.direction(), material);
 
-            color *= (1. - (shadowStrength * shadowStrength));
+                color *= (1. - (shadowStrength * shadowStrength));
+            } else {
+                Ray newRay = Ray(intersectionPosition + intersectionNormal*0.001, intersectionNormal);
+                color = Vec3::compProduct(material.diffuse_material, rayTraceRecursive(newRay, NRemainingBounces-1));
+            }
+
         }
         return color;
     }
 
 
     Vec3 rayTrace( Ray const & rayStart ) {
-        Vec3 color = rayTraceRecursive(rayStart, 1);
+        Vec3 color = rayTraceRecursive(rayStart, 5);
         return color;
     }
 

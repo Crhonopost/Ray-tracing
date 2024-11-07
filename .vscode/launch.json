@@ -8,8 +8,8 @@
       "args": [],
       "stopAtEntry": false,
       "externalConsole": false,
-      "cwd": "/home/e20210003581/Bureau/Travail/sem1/prog3D/HAI719I_Raytracer",
-      "program": "/home/e20210003581/Bureau/Travail/sem1/prog3D/HAI719I_Raytracer/build/Debug/outDebug",
+      "cwd": "/home/e20210003581/Bureau/Travail/sem1/prog3D/HAI719I_Raytracer/src",
+      "program": "/home/e20210003581/Bureau/Travail/sem1/prog3D/HAI719I_Raytracer/src/build/Debug/outDebug",
       "MIMode": "gdb",
       "miDebuggerPath": "gdb",
       "setupCommands": [
