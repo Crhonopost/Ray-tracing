@@ -206,7 +206,6 @@ public:
         }
 
         return false;
-
     }
 
 
@@ -243,15 +242,32 @@ public:
 
             if(material.type == Material_Diffuse_Blinn_Phong || NRemainingBounces<=0){
                 // shadow casting
-                float shadowStrength = sampleSphereLight(intersectionPosition, light.pos, light.radius, 45);
-                // float shadowStrength = isInShadow(intersectionPosition, light.pos);
+                // float shadowStrength = sampleSphereLight(intersectionPosition, light.pos, light.radius, 45);
+                float shadowStrength = isInShadow(intersectionPosition, light.pos);
                 
                 color = phong(light.material, light.pos, intersectionPosition, intersectionNormal, -1 * ray.direction(), material);
 
                 color *= (1. - (shadowStrength * shadowStrength));
+            } else if(material.type == Material_Glass) {
+                Vec3 parallel = Vec3::dot(-1. * ray.direction(), intersectionNormal) * intersectionNormal - (-1. * ray.direction());
+                Ray newRay = Ray(intersectionPosition + intersectionNormal*0.001, intersectionNormal + parallel);
+                color = Vec3::compProduct(material.specular_material, rayTraceRecursive(newRay, NRemainingBounces-1));
             } else {
-                Ray newRay = Ray(intersectionPosition + intersectionNormal*0.001, intersectionNormal);
-                color = Vec3::compProduct(material.diffuse_material, rayTraceRecursive(newRay, NRemainingBounces-1));
+                float refractionIndex = material.index_medium;
+                bool isAligned = Vec3::dot(ray.direction(), intersectionNormal) <= 0;
+                if(isAligned){
+                    refractionIndex = 1. / material.index_medium;
+                }
+
+                float cosTheta = std::fmin(Vec3::dot(-1 * ray.direction(), intersectionNormal), 1.);
+                Vec3 rOutPerp = refractionIndex * (-1. * ray.direction() + cosTheta * intersectionNormal);
+                Vec3 rOutPara = -std::sqrt(std::fabs(1.0 - rOutPerp.squareLength())) * intersectionNormal;
+
+                Vec3 newDirection = rOutPara + rOutPerp; // refractionIndex * (ray.direction() + (-Vec3::dot(ray.direction(), intersectionNormal) * intersectionNormal));
+                newDirection.normalize();
+                Vec3 newPosition = isAligned ? intersectionPosition + intersectionNormal*0.001 : intersectionPosition - intersectionNormal*0.001; 
+                Ray newRay = Ray(newPosition, newDirection);
+                color = rayTraceRecursive(newRay, NRemainingBounces-1);
             }
 
         }
@@ -260,7 +276,7 @@ public:
 
 
     Vec3 rayTrace( Ray const & rayStart ) {
-        Vec3 color = rayTraceRecursive(rayStart, 5);
+        Vec3 color = rayTraceRecursive(rayStart, 4);
         return color;
     }
 
