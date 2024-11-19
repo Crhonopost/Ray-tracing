@@ -201,6 +201,20 @@ public:
     RayTriangleIntersection intersect( Ray const & ray ) const {
         RayTriangleIntersection closestIntersection;
         closestIntersection.t = FLT_MAX;
+
+        for(MeshTriangle meshTriangle : triangles){
+            Vec3 p0 = vertices[meshTriangle.v[0]].position;
+            Vec3 p1 = vertices[meshTriangle.v[1]].position;
+            Vec3 p2 = vertices[meshTriangle.v[2]].position;
+
+            Triangle triangle = Triangle{p0, p1, p2};
+
+            RayTriangleIntersection intersection = triangle.getIntersection(ray);
+            if(intersection.intersectionExists && intersection.t < closestIntersection.t){
+                closestIntersection = intersection;
+            }
+        }
+
         // Note :
         // Creer un objet Triangle pour chaque face
         // Vous constaterez des problemes de précision

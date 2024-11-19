@@ -320,10 +320,11 @@ int main (int argc, char ** argv) {
 
     camera.move(0., 0., -3.1);
     selected_scene=0;
-    scenes.resize(3);
-    scenes[0].setup_single_sphere();
-    scenes[1].setup_single_square();
-    scenes[2].setup_cornell_box();
+    scenes.resize(4);
+    scenes[0].setup_cornell_box();
+    scenes[1].setup_test_scene();
+    scenes[2].setup_single_sphere();
+    scenes[3].setup_single_square();
 
     glutMainLoop ();
     return EXIT_SUCCESS;
