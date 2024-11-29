@@ -102,7 +102,7 @@ public:
 
         float sum = u0 + u1 + u2;
 
-        if(sum != 1.){
+        if(sum < 0.9999 || sum > 1.00001){
             return result;
         }
 

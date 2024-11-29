@@ -269,8 +269,8 @@ public:
 
             if(material.type == Material_Diffuse_Blinn_Phong || NRemainingBounces<=0){
                 // shadow casting
-                float shadowStrength = sampleSphereLight(intersectionPosition, light.pos, light.radius, 45);
-                // float shadowStrength = isInShadow(intersectionPosition, light.pos);
+                // float shadowStrength = sampleSphereLight(intersectionPosition, light.pos, light.radius, 45);
+                float shadowStrength = isInShadow(intersectionPosition, light.pos);
                 // float shadowStrength = 0.;
                 
                 color = phong(light.material, light.pos, intersectionPosition, intersectionNormal, -1 * ray.direction(), material);
