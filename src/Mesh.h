@@ -201,11 +201,12 @@ public:
     RayTriangleIntersection intersect( Ray const & ray ) const {
         RayTriangleIntersection closestIntersection;
         closestIntersection.t = FLT_MAX;
+        closestIntersection.intersectionExists = false;
 
         for(MeshTriangle meshTriangle : triangles){
-            Vec3 p0 = vertices[meshTriangle.v[0]].position;
-            Vec3 p1 = vertices[meshTriangle.v[1]].position;
-            Vec3 p2 = vertices[meshTriangle.v[2]].position;
+            Vec3 p0 = vertices[meshTriangle.v[0]].position * 1.00001;
+            Vec3 p1 = vertices[meshTriangle.v[1]].position * 1.00001;
+            Vec3 p2 = vertices[meshTriangle.v[2]].position * 1.00001;
 
             Triangle triangle = Triangle{p0, p1, p2};
 

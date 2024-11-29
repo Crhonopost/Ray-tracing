@@ -269,8 +269,9 @@ public:
 
             if(material.type == Material_Diffuse_Blinn_Phong || NRemainingBounces<=0){
                 // shadow casting
-                // float shadowStrength = sampleSphereLight(intersectionPosition, light.pos, light.radius, 45);
-                float shadowStrength = isInShadow(intersectionPosition, light.pos);
+                float shadowStrength = sampleSphereLight(intersectionPosition, light.pos, light.radius, 45);
+                // float shadowStrength = isInShadow(intersectionPosition, light.pos);
+                // float shadowStrength = 0.;
                 
                 color = phong(light.material, light.pos, intersectionPosition, intersectionNormal, -1 * ray.direction(), material);
 
@@ -491,17 +492,21 @@ public:
         }
 
         {
-            spheres.resize( spheres.size() + 1 );
-            Sphere & s = spheres[spheres.size() - 1];
-            s.m_center = Vec3(.0, -1.25, 0.);
-            s.m_radius = 0.15f;
-            s.build_arrays();
-            s.material.type = Material_Glass;
-            s.material.diffuse_material = Vec3( 1.,1.,1. );
-            s.material.specular_material = Vec3(  1.,1.,1. );
-            s.material.shininess = 16;
-            s.material.transparency = 0.;
-            s.material.index_medium = 0.;
+            meshes.resize( meshes.size() + 1 );
+            Mesh & mesh = meshes[meshes.size() - 1];
+            mesh.loadOFF("models/triangle.off");
+            mesh.rotate_y(-90);
+            // mesh.rotate_x(180);
+            // mesh.translate(Vec3(0.5));
+            // mesh.scale(Vec3(3.));
+            mesh.translate(Vec3{-0.125, -1.05, 0});
+            mesh.build_arrays();
+            mesh.material.type = Material_Glass;
+            mesh.material.diffuse_material = Vec3( 1.,1.,1. );
+            mesh.material.specular_material = Vec3( 1.,1.,1. );
+            mesh.material.shininess = 16;
+            mesh.material.transparency = 0.;
+            mesh.material.index_medium = 0.;
         }
 
     }
@@ -551,9 +556,10 @@ public:
         {
             meshes.resize( meshes.size() + 1 );
             Mesh & mesh = meshes[meshes.size() - 1];
-            mesh.loadOFF("models/cow.off");
-            // mesh.rotate_x(180);
-            mesh.scale(Vec3(3.));
+            mesh.loadOFF("models/triangle.off");
+            mesh.rotate_x(-90);
+            // mesh.translate(Vec3(0.5));
+            // mesh.scale(Vec3(3.));
             mesh.translate(Vec3{0, -1.05, 0});
             mesh.build_arrays();
             mesh.material.diffuse_material = Vec3( 1.,1.,1. );
@@ -576,7 +582,6 @@ public:
         // }
     }
 };
-
 
 
 #endif

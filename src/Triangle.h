@@ -64,26 +64,23 @@ public:
     }
     void computeBarycentricCoordinates( Vec3 const & p , float & u0 , float & u1 , float & u2 ) const {
         // SOURCE: https://www.scratchapixel.com/lessons/3d-basic-rendering/ray-tracing-rendering-a-triangle/barycentric-coordinates.html
-        Vec3 b = m_c[0] - m_c[1];
-        Vec3 intersectionToPoint = p - m_c[0];
-        u0 = Vec3::cross(b, intersectionToPoint).norm() / 2;
-        u0 /= area;
-        // u0 = (intersectionToPoint - Vec3::dot(intersectionToPoint, b) * b).length();
-        // u0 /= area;
 
-        b = m_c[1] - m_c[2];
-        intersectionToPoint = p - m_c[1];
-        u1 = Vec3::cross(b, intersectionToPoint).norm() / 2;
-        u1 /= area;
-        // u1 = (intersectionToPoint - Vec3::dot(intersectionToPoint, b) * b).length();
-        // u1 /= area;
-        
-        b = m_c[2] - m_c[0];
-        intersectionToPoint = p - m_c[2];
-        u2 = Vec3::cross(b, intersectionToPoint).norm() / 2;
-        u2 /= area;
-        // u2 = (intersectionToPoint - Vec3::dot(intersectionToPoint, b) * b).length();
-        // u2 /= area;
+        Vec3 side, toPoint, C;
+
+        toPoint = p - m_c[1];
+        side = m_c[2] - m_c[1];
+        C = Vec3::cross(side, toPoint);
+        u0 = (C.length() / 2.) / area;
+
+        toPoint = p - m_c[2];
+        side = m_c[0] - m_c[2];
+        C = Vec3::cross(side, toPoint);
+        u1 = (C.length() / 2.) / area;
+
+        toPoint = p - m_c[0];
+        side = m_c[1] - m_c[0];
+        C = Vec3::cross(side, toPoint);
+        u2 = (C.length() / 2.) / area;
     }
 
     RayTriangleIntersection getIntersection( Ray const & ray ) const {
@@ -95,6 +92,7 @@ public:
         // 2) check that the triangle is "in front of" the ray:
         Vec3 intersectionPosition = getIntersectionPointWithSupportPlane(ray);
         Vec3 collisionDirection = intersectionPosition - ray.origin();
+        collisionDirection.normalize();
         if(Vec3::dot(collisionDirection, ray.direction()) < 0) return result;
 
         // 3) check that the intersection point is inside the triangle:
@@ -104,15 +102,17 @@ public:
 
         float sum = u0 + u1 + u2;
 
-        if(sum > 0 && sum <= 1){
-            result.intersectionExists = true;
-            result.t = (ray.origin() - intersectionPosition).length();
-            result.intersection = intersectionPosition;
-            result.normal = m_normal;
-            result.w0 = u0;
-            result.w1 = u1;
-            result.w2 = u2;
+        if(sum != 1.){
+            return result;
         }
+
+        result.intersectionExists = true;
+        result.t = (ray.origin() - intersectionPosition).length();
+        result.intersection = intersectionPosition;
+        result.normal = m_normal;
+        result.w0 = u0;
+        result.w1 = u1;
+        result.w2 = u2;
         
 
         // 4) Finally, if all conditions were met, then there is an intersection! :
