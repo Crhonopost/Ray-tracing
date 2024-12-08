@@ -94,7 +94,6 @@ public:
 
         float discriminant = (b*b) - (4.f*a*c);
         if(discriminant > 0){
-            intersection.intersectionExists = true;
             float sqrtDis = sqrt(discriminant);
 
             float t1 = (-b -sqrtDis) / (2 * a);
@@ -115,6 +114,9 @@ public:
             
             intersection.normal = intersection.intersection - m_center;
             intersection.normal.normalize();
+            if(Vec3::dot(ray.direction(), intersection.normal) > 0.) return intersection;
+
+            intersection.intersectionExists = true;
         } else if (discriminant == 0){
             float t = -b / (2. * a);
             intersection.t = t;
