@@ -213,6 +213,12 @@ public:
             RayTriangleIntersection intersection = triangle.getIntersection(ray);
             if(intersection.intersectionExists && intersection.t < closestIntersection.t){
                 closestIntersection = intersection;
+
+                Vec3 n0 = vertices[meshTriangle.v[0]].normal;
+                Vec3 n1 = vertices[meshTriangle.v[1]].normal;
+                Vec3 n2 = vertices[meshTriangle.v[2]].normal;
+
+                closestIntersection.normal = n0 * intersection.w0 + n1 * intersection.w1 + n2 * intersection.w2;
             }
         }
 

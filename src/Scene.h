@@ -493,22 +493,6 @@ public:
             s.material.index_medium = 0.;
         }
 
-        {
-            meshes.resize( meshes.size() + 1 );
-            Mesh & mesh = meshes[meshes.size() - 1];
-            mesh.loadOFF("models/triangle.off");
-            // mesh.translate(Vec3(0.5));
-            // mesh.scale(Vec3(3.));
-            mesh.translate(Vec3{-0.125, -1.05, -1.25});
-            mesh.build_arrays();
-            mesh.material.type = Material_Glass;
-            mesh.material.diffuse_material = Vec3( 1.,1.,1. );
-            mesh.material.specular_material = Vec3( 1.,1.,1. );
-            mesh.material.shininess = 16;
-            mesh.material.transparency = 0.5;
-            mesh.material.index_medium = 0.;
-        }
-
     }
 
     void setup_refraction_scene(){
@@ -637,32 +621,34 @@ public:
             s.material.shininess = 16;
         }
 
+        // {
+        //     meshes.resize( meshes.size() + 1 );
+        //     Mesh & mesh = meshes[meshes.size() - 1];
+        //     mesh.loadOFF("models/gorilla18_fixed.obj.off");
+        //     // mesh.rotate_x(-90);
+        //     mesh.scale(Vec3(0.0125));
+        //     mesh.translate(Vec3{0, -1.05, 0});
+        //     mesh.build_arrays();
+        //     mesh.material.diffuse_material = Vec3( 1.,1.,1. );
+        //     mesh.material.specular_material = Vec3( 1.,1.,1. );
+        //     mesh.material.shininess = 16;
+        // }
+
+        
         {
             meshes.resize( meshes.size() + 1 );
             Mesh & mesh = meshes[meshes.size() - 1];
-            mesh.loadOFF("models/gorilla18_fixed.obj.off");
-            // mesh.rotate_x(-90);
-            mesh.scale(Vec3(0.0125));
-            mesh.translate(Vec3{0, -1.05, 0});
+            mesh.loadOFF("models/blob.off");
+            mesh.rotate_x(180);
+            mesh.translate(Vec3{-0.125, -1.05, -1.25});
             mesh.build_arrays();
+            // mesh.material.type = Material_Glass;
             mesh.material.diffuse_material = Vec3( 1.,1.,1. );
             mesh.material.specular_material = Vec3( 1.,1.,1. );
             mesh.material.shininess = 16;
+            mesh.material.transparency = 0.5;
+            mesh.material.index_medium = 0.;
         }
-
-        // { //MIRRORED Sphere
-        //     spheres.resize( spheres.size() + 1 );
-        //     Sphere & s = spheres[spheres.size() - 1];
-        //     s.m_center = Vec3(-1.0, -1.25, -0.5);
-        //     s.m_radius = 0.75f;
-        //     s.build_arrays();
-        //     s.material.type = Material_Glass;
-        //     s.material.diffuse_material = Vec3( 1.,1.,1. );
-        //     s.material.specular_material = Vec3(  1.,1.,1. );
-        //     s.material.shininess = 16;
-        //     s.material.transparency = 0.;
-        //     s.material.index_medium = 0.;
-        // }
     }
 };
 
