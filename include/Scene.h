@@ -624,7 +624,7 @@ public:
         // {
         //     meshes.resize( meshes.size() + 1 );
         //     Mesh & mesh = meshes[meshes.size() - 1];
-        //     mesh.loadOFF("models/gorilla18_fixed.obj.off");
+        //     mesh.loadOFF("resources/models/gorilla18_fixed.obj.off");
         //     // mesh.rotate_x(-90);
         //     mesh.scale(Vec3(0.0125));
         //     mesh.translate(Vec3{0, -1.05, 0});
@@ -638,7 +638,7 @@ public:
         {
             meshes.resize( meshes.size() + 1 );
             Mesh & mesh = meshes[meshes.size() - 1];
-            mesh.loadOFF("models/blob.off");
+            mesh.loadOFF("resources/models/blob.off");
             mesh.rotate_x(180);
             mesh.translate(Vec3{-0.125, -1.05, -1.25});
             mesh.build_arrays();

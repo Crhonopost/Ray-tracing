@@ -23,18 +23,18 @@
 #include <cstdlib>
 
 #include <algorithm>
-#include "src/Vec3.h"
-#include "src/Camera.h"
-#include "src/Scene.h"
+#include "include/Vec3.h"
+#include "include/Camera.h"
+#include "include/Scene.h"
 #include <GL/glut.h>
 
-#include "src/matrixUtilities.h"
+#include "include/matrixUtilities.h"
 
 using namespace std;
 
-#include "src/imageLoader.h"
+#include "include/imageLoader.h"
 
-#include "src/Material.h"
+#include "include/Material.h"
 
 
 // -------------------------------------------

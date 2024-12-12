@@ -14,9 +14,10 @@ SRCS =  src/Camera.cpp main.cpp src/Trackball.cpp src/imageLoader.cpp src/Mesh.c
 LIBS =  -lglut -lGLU -lGL -lm -lpthread 
 #########################################################"
 
-INCDIR = .
+INCDIR = ./include
 LIBDIR = .
 BINDIR = .
+BUILDDIR = ./build
 
 # nom du compilateur
 CC = g++
@@ -35,10 +36,21 @@ LDLIBS = -L$(LIBDIR) $(LIBS)
 
 # construire la liste des fichiers objets une nouvelle chaine � partir
 # de SRCS en substituant les occurences de ".c" par ".o" 
-OBJS = $(SRCS:.cpp=.o)   
+# OBJS = $(SRCS:.cpp=.o)
+OBJS = $(patsubst %.cpp, $(BUILDDIR)/%.o, $(SRCS))
 
 # cible par d�faut
+# $(CIBLE): $(OBJS)
 $(CIBLE): $(OBJS)
+	$(CC) $(OBJS) $(LDFLAGS) $(LDLIBS) -o $(CIBLE)
+
+$(BUILDDIR)/%.o: %.cpp
+	@mkdir -p $(@D)
+	$(CC) $(CPPFLAGS) $(CXXFLAGS) -c $< -o $@
+
+$(BUILDDIR)/%.o: %.cpp
+	@mkdir -p $(@D)
+	$(CC) $(CPPFLAGS) $(CXXFLAGS) -c $< -o $@
 
 install:  $(CIBLE)
 	cp $(CIBLE) $(BINDIR)/
@@ -58,6 +70,6 @@ dep:
 	gcc $(CPPFLAGS) -MM $(SRCS)
 
 # liste des d�pendances g�n�r�e par 'make dep'
-Camera.o: src/Camera.cpp src/Camera.h src/Vec3.h src/Trackball.h
-main.o: main.cpp src/Vec3.h src/Camera.h src/Trackball.h
-Trackball.o: src/Trackball.cpp src/Trackball.h
+Camera.o: src/Camera.cpp include/Camera.h include/Vec3.h include/Trackball.h
+main.o: main.cpp include/Vec3.h include/Camera.h include/Trackball.h
+Trackball.o: src/Trackball.cpp include/Trackball.h
