@@ -8,6 +8,7 @@
 #include "Ray.h"
 #include "Triangle.h"
 #include "Material.h"
+#include "Tree.h"
 
 #include <GL/glut.h>
 
@@ -96,6 +97,9 @@ protected:
 public:
     std::vector<MeshVertex> vertices;
     std::vector<MeshTriangle> triangles;
+    KdTree<size_t> triangleTree;
+
+    AABB boundingBox;
 
     std::vector< float > positions_array;
     std::vector< float > normalsArray;
@@ -117,6 +121,7 @@ public:
         build_normals_array();
         build_UVs_array();
         build_triangles_array();
+        buildTree();
     }
 
 
@@ -196,6 +201,55 @@ public:
         glVertexPointer (3, GL_FLOAT, 3*sizeof (float) , (GLvoid*)(positions_array.data()));
         glDrawElements(GL_TRIANGLES, triangles_array.size(), GL_UNSIGNED_INT, (GLvoid*)(triangles_array.data()));
 
+        
+        if(vertices.size() > 4){
+            std::vector<AABB> aabbs;
+            triangleTree.getAABBs(aabbs, boundingBox);
+
+            for (const auto& box : aabbs) {
+                drawAABB(box);
+            }
+        }
+
+        // drawAABB(boundingBox);
+
+    }
+
+
+    void pushFace(Vec3 min, Vec3 max) const {
+        Vec3 v1(min[0], min[1], min[2]); 
+        Vec3 v2(max[0], max[1], min[2]); 
+        Vec3 v3(max[0], max[1], max[2]); 
+        Vec3 v4(min[0], min[1], max[2]); 
+
+        glVertex3f(v1[0], v1[1], v1[2]);
+        glVertex3f(v2[0], v2[1], v2[2]);
+        glVertex3f(v3[0], v3[1], v3[2]);
+        glVertex3f(v4[0], v4[1], v4[2]);
+    }
+    void drawAABB(const AABB& box) const{
+        glLineWidth(2.f);
+        glColor3f(1.0f, 0.08f, 0.58f);
+        glBegin(GL_LINE_LOOP);
+
+        Vec3 min = box.min;
+        Vec3 max = box.max;
+
+        Vec3 diag = max - min;
+
+        pushFace(min, min + Vec3(diag[0], 0, diag[2]));
+        pushFace(min, min + Vec3(0, diag[1], diag[2]));
+        
+        Vec3 nextPoint = min + Vec3(0, diag[1], diag[2]); 
+        glVertex3f(nextPoint[0], nextPoint[1], nextPoint[2]);
+        
+        pushFace(max, max - Vec3(0, diag[1], diag[2]));
+        pushFace(max, max - Vec3(diag[0], 0, diag[2]));
+        
+        nextPoint = max - Vec3(diag[0], 0, diag[2]); 
+        glVertex3f(nextPoint[0], nextPoint[1], nextPoint[2]);
+
+        glEnd();
     }
 
     RayTriangleIntersection intersect( Ray const & ray ) const {
@@ -227,6 +281,33 @@ public:
         // Vous constaterez des problemes de précision
         // solution : ajouter un facteur d'échelle lors de la création du Triangle : float triangleScaling = 1.000001;
         return closestIntersection;
+    }
+
+    void buildTree(unsigned int nb_of_subdivide_tree = 3){
+        std::vector<Vec3> verticesPositions;
+        Vec3 min, max;
+        min = vertices[0].position;
+        max = vertices[0].position;
+        for (const auto& vertex : vertices) {
+            verticesPositions.push_back(vertex.position);
+
+            // Comparer chaque composante x, y, z du vecteur avec min et max
+            for (int i = 0; i < 3; i++) { // 3 correspond à x, y, z
+                if (vertex.position[i] < min[i]) {
+                    min[i] = vertex.position[i];
+                }
+                if (vertex.position[i] > max[i]) {
+                    max[i] = vertex.position[i];
+                }
+            }
+        }
+
+        Vec3 diag = max - min;
+        diag.normalize();
+
+        boundingBox.min = min - 0.5 * diag;
+        boundingBox.max = max + 0.5 * diag;
+        triangleTree = KdTree<size_t>(verticesPositions, nb_of_subdivide_tree, 0);
     }
 };
 

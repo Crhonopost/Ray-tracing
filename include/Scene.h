@@ -45,6 +45,10 @@ struct RaySceneIntersection{
 };
 
 
+struct Settings{
+    unsigned int tree_subdivide;
+};
+
 
 class Scene {
     std::vector< Mesh > meshes;
@@ -53,6 +57,11 @@ class Scene {
     std::vector< Light > lights;
 
 public:
+    void applySettings(Settings set){
+        for(auto& mesh : meshes){
+            mesh.buildTree(set.tree_subdivide);
+        }
+    }
 
 
     Scene() {
@@ -81,7 +90,7 @@ public:
         RaySceneIntersection result;
         result.intersectionExists = false;
         for(int i=0; i<spheres.size(); i++){
-            Sphere sphere = spheres[i];
+            Sphere &sphere = spheres[i];
             RaySphereIntersection intersection = sphere.intersect(ray);
             if (intersection.intersectionExists){
                 if(!result.intersectionExists || result.t > intersection.t){
@@ -95,7 +104,7 @@ public:
         }
 
         for(int i=0; i<squares.size(); i++){
-            Square square = squares[i];
+            Square &square = squares[i];
             RaySquareIntersection intersection = square.intersect(ray);
             if (intersection.intersectionExists){
                 if(!result.intersectionExists || result.t > intersection.t){
@@ -108,7 +117,7 @@ public:
             }
         }
         for(int i=0; i<meshes.size(); i++){
-            Mesh mesh = meshes[i];
+            Mesh &mesh = meshes[i];
             RayTriangleIntersection intersection = mesh.intersect(ray);
             if (intersection.intersectionExists){
                 if(!result.intersectionExists || result.t > intersection.t){
@@ -201,7 +210,7 @@ public:
 
         size_t i=0;
         while(i < meshes.size()){
-            Mesh mesh = meshes[i];
+            Mesh &mesh = meshes[i];
             RayTriangleIntersection intersection = mesh.intersect(ray);
             if(intersection.intersectionExists && intersection.t > 0.001 && intersection.t < length){
                 return true;
@@ -210,7 +219,7 @@ public:
         }
         i=0;
         while(i < spheres.size()){
-            Sphere sphere = spheres[i];
+            Sphere &sphere = spheres[i];
             RaySphereIntersection intersection = sphere.intersect(ray);
             if(intersection.intersectionExists && intersection.t > 0.001 && intersection.t < length){
                 return true;
@@ -219,7 +228,7 @@ public:
         }
         i=0;
         while(i < squares.size()){
-            Square square = squares[i];
+            Square &square = squares[i];
             RaySquareIntersection intersection = square.intersect(ray);
             if(intersection.intersectionExists && intersection.t > 0.001 && intersection.t < length){
                 return true;
@@ -237,7 +246,7 @@ public:
     Vec3 rayTraceRecursive( Ray ray , int NRemainingBounces ) {
         RaySceneIntersection raySceneIntersection = computeIntersection(ray);
         Vec3 color = Vec3{0.1, 0.2, 0.3};
-        Light light = lights[0];
+        Light &light = lights[0];
 
         if(raySceneIntersection.intersectionExists){
             Vec3 intersectionPosition, intersectionNormal;
@@ -640,6 +649,7 @@ public:
             Mesh & mesh = meshes[meshes.size() - 1];
             mesh.loadOFF("assets/models/blob.off");
             mesh.rotate_x(180);
+            mesh.rotate_y(45);
             mesh.translate(Vec3{-0.125, -1.05, -1.25});
             mesh.build_arrays();
             // mesh.material.type = Material_Glass;

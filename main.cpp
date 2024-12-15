@@ -21,6 +21,7 @@
 #include <string>
 #include <cstdio>
 #include <cstdlib>
+#include <chrono>
 
 #include <algorithm>
 #include "include/Vec3.h"
@@ -53,6 +54,7 @@ static unsigned int FPS = 0;
 static bool fullScreen = false;
 
 std::vector<Scene> scenes;
+Settings settings;
 unsigned int selected_scene;
 
 std::vector< std::pair< Vec3 , Vec3 > > rays;
@@ -103,6 +105,8 @@ void init () {
     glDepthFunc (GL_LESS);
     glEnable (GL_DEPTH_TEST);
     glClearColor (0.2f, 0.2f, 0.3f, 1.0f);
+
+    settings.tree_subdivide = 3;
 }
 
 
@@ -167,6 +171,8 @@ void idle () {
 
 
 void ray_trace_from_camera() {
+    const auto startTime = std::chrono::high_resolution_clock::now();
+
     int w = glutGet(GLUT_WINDOW_WIDTH)  ,   h = glutGet(GLUT_WINDOW_HEIGHT);
     std::cout << "Ray tracing a " << w << " x " << h << " image" << std::endl;
     camera.apply();
@@ -187,7 +193,9 @@ void ray_trace_from_camera() {
             image[x + y*w] /= nsamples;
         }
     }
-    std::cout << "\tDone" << std::endl;
+    const auto stopTime = std::chrono::high_resolution_clock::now();
+    const auto duration = std::chrono::duration_cast<std::chrono::seconds>(stopTime - startTime);
+    cout << "Done in: " << duration.count() << "s" << endl;
 
     std::string filename = "./rendu.ppm";
     ofstream f(filename.c_str(), ios::binary);
@@ -237,6 +245,15 @@ void key (unsigned char keyPressed, int x, int y) {
     case '+':
         selected_scene++;
         if( selected_scene >= scenes.size() ) selected_scene = 0;
+        scenes[selected_scene].applySettings(settings);
+        break;
+    case 'e':
+        settings.tree_subdivide ++;
+        scenes[selected_scene].applySettings(settings);
+        break;
+    case 'a':
+        settings.tree_subdivide --;
+        scenes[selected_scene].applySettings(settings);
         break;
     default:
         printUsage ();
