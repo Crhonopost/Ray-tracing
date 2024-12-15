@@ -228,8 +228,13 @@ public:
         glVertex3f(v4[0], v4[1], v4[2]);
     }
     void drawAABB(const AABB& box) const{
+        GLfloat color[4] = {1.0f, 0.08f, 0.58f, 1.0f};
+
+        glMaterialfv(GL_FRONT_AND_BACK, GL_SPECULAR, color);
+        glMaterialfv(GL_FRONT_AND_BACK, GL_DIFFUSE, color);
+        glMaterialfv(GL_FRONT_AND_BACK, GL_AMBIENT, color);
+
         glLineWidth(2.f);
-        glColor3f(1.0f, 0.08f, 0.58f);
         glBegin(GL_LINE_LOOP);
 
         Vec3 min = box.min;
@@ -305,8 +310,8 @@ public:
         Vec3 diag = max - min;
         diag.normalize();
 
-        boundingBox.min = min - 0.5 * diag;
-        boundingBox.max = max + 0.5 * diag;
+        boundingBox.min = min - 0.01 * diag;
+        boundingBox.max = max + 0.01 * diag;
         triangleTree = KdTree<size_t>(verticesPositions, nb_of_subdivide_tree, 0);
     }
 };
