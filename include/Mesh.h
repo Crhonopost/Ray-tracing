@@ -257,12 +257,43 @@ public:
         glEnd();
     }
 
+    // RayTriangleIntersection intersect( Ray const & ray ) const {
+    //     RayTriangleIntersection closestIntersection;
+    //     closestIntersection.t = FLT_MAX;
+    //     closestIntersection.intersectionExists = false;
+
+    //     for(MeshTriangle meshTriangle : triangles){
+    //         Vec3 p0 = vertices[meshTriangle.v[0]].position * 1.0001;
+    //         Vec3 p1 = vertices[meshTriangle.v[1]].position * 1.0001;
+    //         Vec3 p2 = vertices[meshTriangle.v[2]].position * 1.0001;
+
+    //         Triangle triangle = Triangle{p0, p1, p2};
+
+    //         RayTriangleIntersection intersection = triangle.getIntersection(ray);
+    //         if(intersection.intersectionExists && intersection.t < closestIntersection.t){
+    //             closestIntersection = intersection;
+
+    //             Vec3 n0 = vertices[meshTriangle.v[0]].normal;
+    //             Vec3 n1 = vertices[meshTriangle.v[1]].normal;
+    //             Vec3 n2 = vertices[meshTriangle.v[2]].normal;
+
+    //             closestIntersection.normal = n0 * intersection.w0 + n1 * intersection.w1 + n2 * intersection.w2;
+    //         }
+    //     }
+
+    //     return closestIntersection;
+    // }
+
     RayTriangleIntersection intersect( Ray const & ray ) const {
         RayTriangleIntersection closestIntersection;
         closestIntersection.t = FLT_MAX;
         closestIntersection.intersectionExists = false;
 
-        for(MeshTriangle meshTriangle : triangles){
+        auto possibleTriangleIdx = triangleTree.intersect(ray, boundingBox);
+        
+        for(auto triangleIdx: possibleTriangleIdx){
+            MeshTriangle meshTriangle = triangles[triangleIdx];
+
             Vec3 p0 = vertices[meshTriangle.v[0]].position * 1.0001;
             Vec3 p1 = vertices[meshTriangle.v[1]].position * 1.0001;
             Vec3 p2 = vertices[meshTriangle.v[2]].position * 1.0001;
@@ -278,13 +309,10 @@ public:
                 Vec3 n2 = vertices[meshTriangle.v[2]].normal;
 
                 closestIntersection.normal = n0 * intersection.w0 + n1 * intersection.w1 + n2 * intersection.w2;
+                return closestIntersection;
             }
         }
 
-        // Note :
-        // Creer un objet Triangle pour chaque face
-        // Vous constaterez des problemes de précision
-        // solution : ajouter un facteur d'échelle lors de la création du Triangle : float triangleScaling = 1.000001;
         return closestIntersection;
     }
 
@@ -313,6 +341,18 @@ public:
         boundingBox.min = min - 0.01 * diag;
         boundingBox.max = max + 0.01 * diag;
         triangleTree = KdTree<size_t>(verticesPositions, nb_of_subdivide_tree, 0);
+
+        for(int idxT=0; idxT < triangles.size(); idxT ++){
+            auto triangle = triangles[idxT];
+            for(int i=0; i<3; i++){
+                auto pos = vertices[triangle.v[i]].position;
+                KdTree<size_t> & currentTree = triangleTree.getCorrespondingTree(pos);
+                bool hasAlreadyIdx = std::find(currentTree.values.begin(), currentTree.values.end(), idxT) != currentTree.values.end();
+                if(!hasAlreadyIdx){
+                    currentTree.values.push_back(idxT);
+                }
+            }
+        }
     }
 };
 
