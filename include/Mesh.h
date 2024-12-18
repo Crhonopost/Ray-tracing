@@ -8,11 +8,15 @@
 #include "Ray.h"
 #include "Triangle.h"
 #include "Material.h"
-#include "Tree.h"
+#include "AccelerationStruct.h"
 
 #include <GL/glut.h>
 
 #include <cfloat>
+
+
+struct BVH_Node;
+struct AABB;
 
 
 // -------------------------------------------
@@ -97,9 +101,9 @@ protected:
 public:
     std::vector<MeshVertex> vertices;
     std::vector<MeshTriangle> triangles;
-    KdTree<size_t> triangleTree;
+    std::unique_ptr<BVH_Node> triangleTree;
 
-    AABB boundingBox;
+    std::unique_ptr<AABB> boundingBox;
 
     std::vector< float > positions_array;
     std::vector< float > normalsArray;
@@ -173,47 +177,7 @@ public:
     }
 
 
-    void draw() const {
-        if( triangles_array.size() == 0 ) return;
-        GLfloat material_color[4] = {material.diffuse_material[0],
-                                     material.diffuse_material[1],
-                                     material.diffuse_material[2],
-                                     1.0};
-
-        GLfloat material_specular[4] = {material.specular_material[0],
-                                        material.specular_material[1],
-                                        material.specular_material[2],
-                                        1.0};
-
-        GLfloat material_ambient[4] = {material.ambient_material[0],
-                                       material.ambient_material[1],
-                                       material.ambient_material[2],
-                                       1.0};
-
-        glMaterialfv(GL_FRONT_AND_BACK, GL_SPECULAR, material_specular);
-        glMaterialfv(GL_FRONT_AND_BACK, GL_DIFFUSE, material_color);
-        glMaterialfv(GL_FRONT_AND_BACK, GL_AMBIENT, material_ambient);
-        glMaterialf(GL_FRONT_AND_BACK, GL_SHININESS, material.shininess);
-
-        glEnableClientState(GL_VERTEX_ARRAY) ;
-        glEnableClientState (GL_NORMAL_ARRAY);
-        glNormalPointer (GL_FLOAT, 3*sizeof (float), (GLvoid*)(normalsArray.data()));
-        glVertexPointer (3, GL_FLOAT, 3*sizeof (float) , (GLvoid*)(positions_array.data()));
-        glDrawElements(GL_TRIANGLES, triangles_array.size(), GL_UNSIGNED_INT, (GLvoid*)(triangles_array.data()));
-
-        
-        if(vertices.size() > 4){
-            std::vector<AABB> aabbs;
-            triangleTree.getAABBs(aabbs, boundingBox);
-
-            for (const auto& box : aabbs) {
-                drawAABB(box);
-            }
-        }
-
-        // drawAABB(boundingBox);
-
-    }
+    void draw() const;
 
 
     void pushFace(Vec3 min, Vec3 max) const {
@@ -227,35 +191,7 @@ public:
         glVertex3f(v3[0], v3[1], v3[2]);
         glVertex3f(v4[0], v4[1], v4[2]);
     }
-    void drawAABB(const AABB& box) const{
-        GLfloat color[4] = {1.0f, 0.08f, 0.58f, 1.0f};
-
-        glMaterialfv(GL_FRONT_AND_BACK, GL_SPECULAR, color);
-        glMaterialfv(GL_FRONT_AND_BACK, GL_DIFFUSE, color);
-        glMaterialfv(GL_FRONT_AND_BACK, GL_AMBIENT, color);
-
-        glLineWidth(2.f);
-        glBegin(GL_LINE_LOOP);
-
-        Vec3 min = box.min;
-        Vec3 max = box.max;
-
-        Vec3 diag = max - min;
-
-        pushFace(min, min + Vec3(diag[0], 0, diag[2]));
-        pushFace(min, min + Vec3(0, diag[1], diag[2]));
-        
-        Vec3 nextPoint = min + Vec3(0, diag[1], diag[2]); 
-        glVertex3f(nextPoint[0], nextPoint[1], nextPoint[2]);
-        
-        pushFace(max, max - Vec3(0, diag[1], diag[2]));
-        pushFace(max, max - Vec3(diag[0], 0, diag[2]));
-        
-        nextPoint = max - Vec3(diag[0], 0, diag[2]); 
-        glVertex3f(nextPoint[0], nextPoint[1], nextPoint[2]);
-
-        glEnd();
-    }
+    void drawAABB(const AABB& box) const;
 
     // RayTriangleIntersection intersect( Ray const & ray ) const {
     //     RayTriangleIntersection closestIntersection;
@@ -284,76 +220,9 @@ public:
     //     return closestIntersection;
     // }
 
-    RayTriangleIntersection intersect( Ray const & ray ) const {
-        RayTriangleIntersection closestIntersection;
-        closestIntersection.t = FLT_MAX;
-        closestIntersection.intersectionExists = false;
+    RayTriangleIntersection intersect( Ray const & ray ) const;
 
-        auto possibleTriangleIdx = triangleTree.intersect(ray, boundingBox);
-        
-        for(auto triangleIdx: possibleTriangleIdx){
-            MeshTriangle meshTriangle = triangles[triangleIdx];
-
-            Vec3 p0 = vertices[meshTriangle.v[0]].position * 1.0001;
-            Vec3 p1 = vertices[meshTriangle.v[1]].position * 1.0001;
-            Vec3 p2 = vertices[meshTriangle.v[2]].position * 1.0001;
-
-            Triangle triangle = Triangle{p0, p1, p2};
-
-            RayTriangleIntersection intersection = triangle.getIntersection(ray);
-            if(intersection.intersectionExists && intersection.t < closestIntersection.t){
-                closestIntersection = intersection;
-
-                Vec3 n0 = vertices[meshTriangle.v[0]].normal;
-                Vec3 n1 = vertices[meshTriangle.v[1]].normal;
-                Vec3 n2 = vertices[meshTriangle.v[2]].normal;
-
-                closestIntersection.normal = n0 * intersection.w0 + n1 * intersection.w1 + n2 * intersection.w2;
-                return closestIntersection;
-            }
-        }
-
-        return closestIntersection;
-    }
-
-    void buildTree(unsigned int nb_of_subdivide_tree = 3){
-        std::vector<Vec3> verticesPositions;
-        Vec3 min, max;
-        min = vertices[0].position;
-        max = vertices[0].position;
-        for (const auto& vertex : vertices) {
-            verticesPositions.push_back(vertex.position);
-
-            // Comparer chaque composante x, y, z du vecteur avec min et max
-            for (int i = 0; i < 3; i++) { // 3 correspond à x, y, z
-                if (vertex.position[i] < min[i]) {
-                    min[i] = vertex.position[i];
-                }
-                if (vertex.position[i] > max[i]) {
-                    max[i] = vertex.position[i];
-                }
-            }
-        }
-
-        Vec3 diag = max - min;
-        diag.normalize();
-
-        boundingBox.min = min - 0.01 * diag;
-        boundingBox.max = max + 0.01 * diag;
-        triangleTree = KdTree<size_t>(verticesPositions, nb_of_subdivide_tree, 0);
-
-        for(int idxT=0; idxT < triangles.size(); idxT ++){
-            auto triangle = triangles[idxT];
-            for(int i=0; i<3; i++){
-                auto pos = vertices[triangle.v[i]].position;
-                KdTree<size_t> & currentTree = triangleTree.getCorrespondingTree(pos);
-                bool hasAlreadyIdx = std::find(currentTree.values.begin(), currentTree.values.end(), idxT) != currentTree.values.end();
-                if(!hasAlreadyIdx){
-                    currentTree.values.push_back(idxT);
-                }
-            }
-        }
-    }
+    void buildTree(unsigned int nb_of_subdivide_tree = 3);
 };
 
 

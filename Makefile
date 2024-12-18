@@ -10,7 +10,7 @@
 # NE PAS OUBLIER D'AJOUTER LA LISTE DES DEPENDANCES A LA FIN DU FICHIER
 
 CIBLE = main
-SRCS =  src/Camera.cpp main.cpp src/Trackball.cpp src/imageLoader.cpp src/Mesh.cpp
+SRCS =  src/Camera.cpp main.cpp src/Trackball.cpp src/imageLoader.cpp src/Mesh.cpp src/AccelerationStruct.cpp
 LIBS =  -lglut -lGLU -lGL -lm -lpthread 
 #########################################################"
 
@@ -73,3 +73,4 @@ dep:
 Camera.o: src/Camera.cpp include/Camera.h include/Vec3.h include/Trackball.h
 main.o: main.cpp include/Vec3.h include/Camera.h include/Trackball.h
 Trackball.o: src/Trackball.cpp include/Trackball.h
+AccelerationStruct.o : src/AccelerationStruct.cpp include/AccelerationStruct.h

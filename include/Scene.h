@@ -279,8 +279,8 @@ public:
             if(material.type == Material_Diffuse_Blinn_Phong || NRemainingBounces<=0){
                 // shadow casting
                 // float shadowStrength = sampleSphereLight(intersectionPosition, light.pos, light.radius, 45);
-                float shadowStrength = isInShadow(intersectionPosition, light.pos);
-                // float shadowStrength = 0.;
+                // float shadowStrength = isInShadow(intersectionPosition, light.pos);
+                float shadowStrength = 0.;
                 
                 color = phong(light.material, light.pos, intersectionPosition, intersectionNormal, -1 * ray.direction(), material);
 
@@ -597,7 +597,7 @@ public:
         {
             lights.resize( lights.size() + 1 );
             Light & light = lights[lights.size() - 1];
-            light.pos = Vec3( 0.0, 3.5, 0.0 );
+            light.pos = Vec3( 1.0, 2.5, 0.0 );
             light.radius = .5f;
             light.powerCorrection = 2.f;
             light.type = LightType_Spherical;
@@ -644,21 +644,21 @@ public:
         }
 
         
-        // {
-        //     meshes.resize( meshes.size() + 1 );
-        //     Mesh & mesh = meshes[meshes.size() - 1];
-        //     mesh.loadOFF("assets/models/blob.off");
-        //     mesh.rotate_x(180);
-        //     mesh.rotate_y(45);
-        //     mesh.translate(Vec3{-0.125, -1.05, -1.25});
-        //     mesh.build_arrays();
-        //     // mesh.material.type = Material_Glass;
-        //     mesh.material.diffuse_material = Vec3( 1.,1.,1. );
-        //     mesh.material.specular_material = Vec3( 1.,1.,1. );
-        //     mesh.material.shininess = 16;
-        //     mesh.material.transparency = 0.5;
-        //     mesh.material.index_medium = 0.;
-        // }
+    //     {
+    //         meshes.resize( meshes.size() + 1 );
+    //         Mesh & mesh = meshes[meshes.size() - 1];
+    //         mesh.loadOFF("assets/models/blob.off");
+    //         mesh.rotate_x(180);
+    //         mesh.rotate_y(45);
+    //         mesh.translate(Vec3{-0.125, -1.05, -1.25});
+    //         mesh.build_arrays();
+    //         // mesh.material.type = Material_Glass;
+    //         mesh.material.diffuse_material = Vec3( 1.,1.,1. );
+    //         mesh.material.specular_material = Vec3( 1.,1.,1. );
+    //         mesh.material.shininess = 16;
+    //         mesh.material.transparency = 0.5;
+    //         mesh.material.index_medium = 0.;
+    //     }
     }
 };
 
