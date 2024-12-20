@@ -174,7 +174,7 @@ void ray_trace_from_camera() {
     const auto startTime = std::chrono::high_resolution_clock::now();
 
     int w = glutGet(GLUT_WINDOW_WIDTH)  ,   h = glutGet(GLUT_WINDOW_HEIGHT);
-    std::cout << "Ray tracing a " << w << " x " << h << " image  (KdTree: " << settings.tree_subdivide << " sections)" << std::endl;
+    std::cout << "Ray tracing a " << w << " x " << h << " image  (BVH: " << settings.tree_subdivide << " sections)" << std::endl;
     camera.apply();
     Vec3 pos , dir;
     //    unsigned int nsamples = 100;

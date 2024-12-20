@@ -315,7 +315,7 @@ public:
 
 
     Vec3 rayTrace( Ray const & rayStart ) {
-        Vec3 color = rayTraceRecursive(rayStart, 8);
+        Vec3 color = rayTraceRecursive(rayStart, 5);
         return color;
     }
 
@@ -502,6 +502,21 @@ public:
             s.material.index_medium = 0.;
         }
 
+        {
+            meshes.resize( meshes.size() + 1 );
+            Mesh & mesh = meshes[meshes.size() - 1];
+            mesh.loadOFF("assets/models/gorilla18_fixed.obj.off");
+            mesh.scale(Vec3(0.0125));
+            mesh.translate(Vec3{0, -1.05, 0});
+            mesh.build_arrays();
+            mesh.material.type = Material_Glass;
+            mesh.material.diffuse_material = Vec3( 1.,1.,1. );
+            mesh.material.specular_material = Vec3( 1.,1.,1. );
+            mesh.material.shininess = 16;
+            mesh.material.transparency = 1.0;
+            mesh.material.index_medium = 1.4;
+        }
+
     }
 
     void setup_refraction_scene(){
@@ -630,18 +645,45 @@ public:
             s.material.shininess = 16;
         }
 
+        // {
+        //     meshes.resize( meshes.size() + 1 );
+        //     Mesh & mesh = meshes[meshes.size() - 1];
+        //     // mesh.rotate_x(-90);
+        //     mesh.translate(Vec3{0, -1.05, 0});
+        //     mesh.build_arrays();
+        //     mesh.material.diffuse_material = Vec3( 1.,1.,1. );
+        //     mesh.material.specular_material = Vec3( 1.,1.,1. );
+        //     mesh.material.shininess = 16;
+        // }
         {
             meshes.resize( meshes.size() + 1 );
             Mesh & mesh = meshes[meshes.size() - 1];
             mesh.loadOFF("assets/models/gorilla18_fixed.obj.off");
-            // mesh.rotate_x(-90);
             mesh.scale(Vec3(0.0125));
             mesh.translate(Vec3{0, -1.05, 0});
             mesh.build_arrays();
+            mesh.material.type = Material_Glass;
             mesh.material.diffuse_material = Vec3( 1.,1.,1. );
             mesh.material.specular_material = Vec3( 1.,1.,1. );
             mesh.material.shininess = 16;
+            mesh.material.transparency = 1.0;
+            mesh.material.index_medium = 1.4;
         }
+
+        // {
+        //     meshes.resize( meshes.size() + 1 );
+        //     Mesh & mesh = meshes[meshes.size() - 1];
+        //     mesh.loadOFF("assets/models/dragon.off");
+        //     mesh.scale(Vec3(10));
+        //     mesh.translate(Vec3{0, -1.05, 0});
+        //     mesh.build_arrays();
+        //     mesh.material.type = Material_Glass;
+        //     mesh.material.diffuse_material = Vec3( 1.,0.,0. );
+        //     mesh.material.specular_material = Vec3( 1.,0.,0. );
+        //     mesh.material.shininess = 16;
+        //     mesh.material.transparency = 1.0;
+        //     mesh.material.index_medium = 1.4;
+        // }
 
         
     //     {

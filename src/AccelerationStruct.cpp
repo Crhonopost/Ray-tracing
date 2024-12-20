@@ -26,7 +26,7 @@ std::pair<bool, float> AABB::intersect(const Ray& ray, const AABB& box) {
     return {true, tMin};
 }
 
-BuildingTriangle::BuildingTriangle(const MeshTriangle& ref, size_t index, const std::vector<Vec3> positions){
+BuildingTriangle::BuildingTriangle(const MeshTriangle & ref, size_t index, const std::vector<Vec3> & positions){
     this->index = index;
     Vec3 a,b,c;
     a = positions[ref.v[0]];
@@ -47,7 +47,7 @@ BuildingTriangle::BuildingTriangle(const MeshTriangle& ref, size_t index, const 
     box.max = max;
 }
 
-AABB BuildingTriangle::getBoundingBox(std::vector<BuildingTriangle> bTriangles){
+AABB BuildingTriangle::getBoundingBox(const std::vector<BuildingTriangle> & bTriangles){
     AABB globalBox;
     globalBox.min = bTriangles[0].box.min;
     globalBox.max = bTriangles[0].box.max;
@@ -61,14 +61,12 @@ AABB BuildingTriangle::getBoundingBox(std::vector<BuildingTriangle> bTriangles){
             globalBox.max[i] = std::max(globalBox.max[i], bMax[i]);
         }
     }
-    globalBox.min -= Vec3(0.1);
-    globalBox.max += Vec3(0.1);
     return globalBox;
 }
 
 BVH_Node BVH_Node::buildBVH(
-    std::vector<Vec3> positions, 
-    std::vector<MeshTriangle> triangles, 
+    const std::vector<Vec3> & positions, 
+    const std::vector<MeshTriangle> & triangles, 
     int deepLimit, 
     int comparisonIdx
 ){
@@ -91,50 +89,59 @@ BVH_Node BVH_Node::buildBVH(
     AABB box;
     box.max = max;
     box.min = min;
-    return BVH_Node(bTriangles, deepLimit, comparisonIdx, box);
+    return BVH_Node(bTriangles, deepLimit, box);
 }
 
-BVH_Node::BVH_Node(std::vector<BuildingTriangle> bTriangles, int deepLimit, int comparisonIdx, AABB currentBox){
+BVH_Node::BVH_Node(std::vector<BuildingTriangle> & bTriangles, int deepLimit, AABB currentBox){
     boundingBox = currentBox;
     
     if(deepLimit > 0 && bTriangles.size() > 1){
-        this->comparisonIdx = comparisonIdx;
+        leaf = false;
 
+        Vec3 diag = boundingBox.max - boundingBox.min;
 
-        // Vec3 distance = min - max;
-        // float biggest = 0;
-        // for(int i=0; i<3; i++){
-        //     if(abs(distance[i]) > biggest){
-        //         biggest = abs(distance[i]);
-        //         this->comparisonIdx = i;
-        //     }
-        // }
+        // Trouve l'index de l'axe le plus long de la boite
+        int comparisonIdx = diag[0] > std::max(diag[1], diag[2]) ? 0 : diag[1] > diag[2] ? 1 : 2;
 
-        auto sortFunction = [comparisonIdx](const BuildingTriangle& a, const BuildingTriangle& b) {
-            return a.average[comparisonIdx] < b.average[comparisonIdx];
-        };
+        Vec3 center = boundingBox.min + diag / 2.;
 
-        std::sort (bTriangles.begin(), bTriangles.end(), sortFunction);
+        auto middle = std::partition(bTriangles.begin(), bTriangles.end(),
+        [center, comparisonIdx](const BuildingTriangle& bTriangle) {
+            return bTriangle.average[comparisonIdx] < center[comparisonIdx];
+        });
 
-        size_t mid = bTriangles.size() / 2;
-        std::vector<BuildingTriangle> firstHalf(bTriangles.begin(), bTriangles.begin() + mid);
-        std::vector<BuildingTriangle> secondHalf(bTriangles.begin() + mid, bTriangles.end());
+        std::vector<BuildingTriangle> firstHalf(bTriangles.begin(), middle);
+        std::vector<BuildingTriangle> secondHalf(middle, bTriangles.end());
+
         
-        AABB leftBox, rightBox;
-        leftBox = BuildingTriangle::getBoundingBox(firstHalf);
-        rightBox = BuildingTriangle::getBoundingBox(secondHalf);
+        AABB emptyBox;
+        emptyBox.min = Vec3(0);
+        emptyBox.max = Vec3(0);
+        std::vector<BuildingTriangle> emptyVec;
+        
+        if(firstHalf.size() >= 1){
+            AABB firstBox = BuildingTriangle::getBoundingBox(firstHalf);
+            l_child = std::make_unique<BVH_Node>(firstHalf, deepLimit - 1, firstBox);
+        } else {
+            l_child = std::make_unique<BVH_Node>(emptyVec, 0, emptyBox);
+        }
+        if(secondHalf.size() >= 1){
+            AABB secondBox = BuildingTriangle::getBoundingBox(secondHalf);
+            r_child = std::make_unique<BVH_Node>(secondHalf, deepLimit - 1, secondBox);
+        } else {
+            r_child = std::make_unique<BVH_Node>(emptyVec, 0, emptyBox);
+        }
 
-        l_child = std::make_unique<BVH_Node>(firstHalf, deepLimit - 1, (comparisonIdx + 1) % 3, leftBox);
-        r_child = std::make_unique<BVH_Node>(secondHalf, deepLimit - 1, (comparisonIdx + 1) % 3, rightBox);
+
     } else {
-        for(auto bTriangle: bTriangles){
+        for(const auto & bTriangle: bTriangles){
             trianglesIdx.push_back(bTriangle.index);
         }
     }
 }
 
 void BVH_Node::getAABBs(std::vector<AABB>& aabbs) const{
-    if(!canCompare()){
+    if(leaf){
         aabbs.push_back(boundingBox);
         return;
     }
@@ -144,7 +151,7 @@ void BVH_Node::getAABBs(std::vector<AABB>& aabbs) const{
 }
 
 std::vector<size_t> BVH_Node::intersect(const Ray & ray, AABB parentBox) const{
-    if(!canCompare()) {
+    if(leaf) {
         return this->trianglesIdx;
     }
     else {

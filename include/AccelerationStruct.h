@@ -23,14 +23,13 @@ struct BuildingTriangle{
     Vec3 average;
     AABB box;
 
-    BuildingTriangle(const MeshTriangle& ref, size_t index, const std::vector<Vec3> positions);
+    BuildingTriangle(const MeshTriangle & ref, size_t index, const std::vector<Vec3> & positions);
 
-    static AABB getBoundingBox(std::vector<BuildingTriangle> bTriangles);
+    static AABB getBoundingBox(const std::vector<BuildingTriangle> & bTriangles);
 };
 
 struct BVH_Node {
-    int comparisonIdx = -1;
-
+    bool leaf = true;
     std::unique_ptr<BVH_Node> l_child;
     std::unique_ptr<BVH_Node> r_child;
 
@@ -41,13 +40,13 @@ struct BVH_Node {
     BVH_Node() = default;
 
     static BVH_Node buildBVH( 
-        std::vector<Vec3> positions, 
-        std::vector<MeshTriangle> triangles, 
+        const std::vector<Vec3> & positions, 
+        const std::vector<MeshTriangle> & triangles, 
         int deepLimit, 
         int comparisonIdx
     );
 
-    BVH_Node(std::vector<BuildingTriangle> bTriangles, int deepLimit, int comparisonIdx, AABB currentBox);
+    BVH_Node(std::vector<BuildingTriangle> & bTriangles, int deepLimit, AABB currentBox);
 
     // Interdire la copie
     BVH_Node(const BVH_Node&) = delete;
@@ -56,22 +55,6 @@ struct BVH_Node {
     // Autoriser le déplacement
     BVH_Node(BVH_Node&&) = default;
     BVH_Node& operator=(BVH_Node&&) = default;
-
-    bool canCompare() const {
-        return comparisonIdx != -1 && trianglesIdx.size() == 0;
-    }
-
-    // BVH_Node& getCorrespondingTree(Vec3 position){
-    //     if(!canCompare()) return *this;
-    //     if(position[comparisonIdx] <= comparedVal[comparisonIdx] && l_child){
-    //         return l_child->getCorrespondingTree(position);
-    //     } else if(position[comparisonIdx] > comparedVal[comparisonIdx] && r_child){
-    //         return r_child->getCorrespondingTree(position);
-    //     } else{
-    //         return *this;
-    //     }
-    // }
-
 
     void getAABBs(std::vector<AABB>& aabbs) const;
 
