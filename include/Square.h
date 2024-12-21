@@ -90,6 +90,8 @@ public:
                 intersection.t = t;
                 intersection.intersection = position;
                 intersection.normal = m_normal;
+                intersection.u = u;
+                intersection.v = v;
             }
 
         }

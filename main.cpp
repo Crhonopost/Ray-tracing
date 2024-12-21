@@ -33,7 +33,7 @@
 
 using namespace std;
 
-#include "include/imageLoader.h"
+#include "include/ImageLoader.h"
 
 #include "include/Material.h"
 

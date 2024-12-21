@@ -1,16 +1,16 @@
 #ifndef MATERIAL_H
 #define MATERIAL_H
 
-#include "imageLoader.h"
+#include "ImageLoader.h"
 #include "Vec3.h"
 #include <cmath>
-
 #include <GL/glut.h>
 
 enum MaterialType {
     Material_Diffuse_Blinn_Phong ,
     Material_Glass,
-    Material_Mirror
+    Material_Mirror,
+    MATERIAL_TEXTURE
 };
 
 
@@ -19,6 +19,8 @@ struct Material {
     Vec3 diffuse_material;
     Vec3 specular_material;
     double shininess;
+
+    ppmLoader::ImageRGB texture;
 
     float index_medium;
     float transparency;
@@ -41,7 +43,10 @@ struct Material {
 
     static Vec3 refract(Vec3 direction, Vec3 normal, float ri, float cosTheta){
         Vec3 rOutPerp = ri * (direction + cosTheta * normal);
-        Vec3 rOutPara = -std::sqrt(std::fabs(1.0 - rOutPerp.squareLength())) * normal;
+        float k = 1.0 - rOutPerp.squareLength();
+        if (k < 0.0) return Vec3(0.0, 0.0, 0.0); // Pas de réfraction possible
+        Vec3 rOutPara = -std::sqrt(k) * normal;
+        // Vec3 rOutPara = -std::sqrt(std::fabs(1.0 - rOutPerp.squareLength())) * normal;
         Vec3 outDirection = rOutPara + rOutPerp;
         outDirection.normalize();
         return outDirection;
@@ -52,6 +57,15 @@ struct Material {
         auto r0 = (1 - refraction_index) / (1 + refraction_index);
         r0 = r0*r0;
         return r0 + (1-r0)*std::pow((1 - cosine),5);
+    }
+
+    Vec3 getPixelAt(double u, double v){
+        int pixelU = (int) (u * (double) texture.w);
+        int pixelV = (int) (v * (double) texture.h);
+        
+        ppmLoader::RGB rgb = texture.data[pixelV * texture.w + pixelU];
+
+        return Vec3(rgb.r, rgb.g, rgb.b) / 255.;
     }
 };
 

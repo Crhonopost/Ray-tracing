@@ -93,12 +93,12 @@ public:
         float c = Vec3::dot(oMinC, oMinC) - (m_radius * m_radius);
 
         float discriminant = (b*b) - (4.f*a*c);
+        float t = 0;
         if(discriminant > 0){
             float sqrtDis = sqrt(discriminant);
 
             float t1 = (-b -sqrtDis) / (2 * a);
             float t2 = (-b +sqrtDis) / (2 * a);
-            float t;
             if (t1 > 0 && t2 > 0) {
                 t = std::min(t1, t2);
             } else if (t1 > 0) {
@@ -109,6 +109,11 @@ public:
                 intersection.intersectionExists = false; // Les deux intersections sont derrière le rayon
                 return intersection;
             }
+        } else if (discriminant == 0){
+            t = -b / (2. * a);
+        }
+
+        if(t != 0.){
             intersection.t = t;
             intersection.intersection = ray.origin() + dir * t;
             
@@ -117,15 +122,12 @@ public:
             if(Vec3::dot(ray.direction(), intersection.normal) > 0.) return intersection;
 
             intersection.intersectionExists = true;
-        } else if (discriminant == 0){
-            float t = -b / (2. * a);
-            intersection.t = t;
-            intersection.intersection = ray.origin() + dir * t;
-            
-            intersection.normal = intersection.intersection - m_center;
-            intersection.normal.normalize();
-            intersection.intersectionExists = true;
+
+            Vec3 spherical = EuclideanCoordinatesToSpherical(intersection.intersection);
+            intersection.theta = spherical[0];
+            intersection.phi = spherical[1];
         }
+
         return intersection;
     }
 };

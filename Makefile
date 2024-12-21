@@ -10,7 +10,7 @@
 # NE PAS OUBLIER D'AJOUTER LA LISTE DES DEPENDANCES A LA FIN DU FICHIER
 
 CIBLE = main
-SRCS =  src/Camera.cpp main.cpp src/Trackball.cpp src/imageLoader.cpp src/Mesh.cpp src/AccelerationStruct.cpp
+SRCS =  src/Camera.cpp main.cpp src/Trackball.cpp src/ImageLoader.cpp src/Mesh.cpp src/AccelerationStruct.cpp
 LIBS =  -lglut -lGLU -lGL -lm -lpthread 
 #########################################################"
 
@@ -23,8 +23,8 @@ BUILDDIR = ./build
 CC = g++
 CPP = g++
 
-CFLAGS = -g -Wall -O0
-CXXFLAGS = -g -Wall -O0
+CFLAGS = -g -Wall -O3
+CXXFLAGS = -g -Wall -O3
 
 
 # option du preprocesseur
