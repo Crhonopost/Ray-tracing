@@ -56,6 +56,8 @@ class Scene {
     std::vector< Square > squares;
     std::vector< Light > lights;
 
+    CheckerTexture checkerTexture = CheckerTexture(4, Vec3(0), Vec3(1));
+
 public:
     void applySettings(Settings set){
         for(auto& mesh : meshes){
@@ -289,6 +291,13 @@ public:
                 break;
             }
 
+            if(material.type == MATERIAL_TEXTURE){
+                color = material.getPixelAt(intersectionUV[0], intersectionUV[1]);;
+                material.ambient_material = color;
+                material.diffuse_material = color;
+                material.specular_material = color;
+            }
+
             if(material.type == Material_Diffuse_Blinn_Phong || NRemainingBounces<=0){
                 
                 color = phong(light.material, light.pos, intersectionPosition, intersectionNormal, -1 * ray.direction(), material);
@@ -299,7 +308,9 @@ public:
                 color = Vec3::compProduct(material.specular_material, rayTraceRecursive(newRay, NRemainingBounces-1));
             } else if(material.type == MATERIAL_TEXTURE){
                 color = material.getPixelAt(intersectionUV[0], intersectionUV[1]);
-            } else {
+            } else if(material.type = Material_Checker){
+                color = checkerTexture.getPixelAt(intersectionUV[0], intersectionUV[1], intersectionPosition);
+            } else if(material.type = Material_Glass) {
                 float cosTheta = std::fmin(Vec3::dot(-1. * ray.direction(), intersectionNormal), 1.);
                 float sinTheta = std::sqrt(1.0 - cosTheta * cosTheta);
                 bool isInside = cosTheta < 0.;
@@ -312,16 +323,16 @@ public:
                     Vec3 newDirection = Material::reflect(ray.direction(), intersectionNormal);
                     newRay = Ray(intersectionPosition + intersectionNormal*0.001, newDirection);
                 }else{
+                    double offsetDir = isInside ? 0.00001 : -0.00001;
                     Vec3 newDirection = Material::refract(ray.direction(), intersectionNormal, refractionIndex, cosTheta);
-                    double offsetDir = isInside ? 1. : -1.;
-                    newRay = Ray(intersectionPosition + (0.00001 * offsetDir * intersectionNormal), newDirection);            
+                    newRay = Ray(intersectionPosition + (offsetDir * intersectionNormal), newDirection);            
                 }
                 
                 color = rayTraceRecursive(newRay, NRemainingBounces-1);
             }
         // shadow casting
-        float shadowStrength = sampleSphereLight(intersectionPosition, light.pos, light.radius, 45);
-        // float shadowStrength = isInShadow(intersectionPosition, light.pos);
+        // float shadowStrength = sampleSphereLight(intersectionPosition, light.pos, light.radius, 45);
+        float shadowStrength = isInShadow(intersectionPosition, light.pos);
         // float shadowStrength = 0.;
         color *= (1. - (shadowStrength * shadowStrength));
 
@@ -617,6 +628,8 @@ public:
             s.material.diffuse_material = Vec3( 0.75,1.,0.75 );
             s.material.specular_material = Vec3( 0.75,1.,0.75 );
             s.material.shininess = 16;
+
+            s.material.type = Material_Checker;
         }
         { //GLASS Sphere
 

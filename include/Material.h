@@ -10,7 +10,8 @@ enum MaterialType {
     Material_Diffuse_Blinn_Phong ,
     Material_Glass,
     Material_Mirror,
-    MATERIAL_TEXTURE
+    MATERIAL_TEXTURE,
+    Material_Checker
 };
 
 
@@ -66,6 +67,29 @@ struct Material {
         ppmLoader::RGB rgb = texture.data[pixelV * texture.w + pixelU];
 
         return Vec3(rgb.r, rgb.g, rgb.b) / 255.;
+    }
+};
+
+// https://raytracing.github.io/books/RayTracingTheNextWeek.html#texturemapping/constantcolortexture
+struct CheckerTexture{
+    Vec3 colorA, colorB;
+    float inv_scale;
+
+    CheckerTexture(float scale, Vec3 colorA, Vec3 colorB){
+        this->colorA = colorA;
+        this->colorB = colorB;
+
+        inv_scale = 1. / scale;
+    }
+
+    Vec3 getPixelAt(double u, double v, const Vec3 & p){
+        auto xInteger = int(std::floor(inv_scale * p[0]));
+        auto yInteger = int(std::floor(inv_scale * p[1]));
+        auto zInteger = int(std::floor(inv_scale * p[2]));
+
+        bool isEven = (xInteger + yInteger + zInteger) % 2 == 0;
+
+        return isEven ? colorA : colorB;
     }
 };
 
