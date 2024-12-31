@@ -308,9 +308,9 @@ public:
                 color = Vec3::compProduct(material.specular_material, rayTraceRecursive(newRay, NRemainingBounces-1));
             } else if(material.type == MATERIAL_TEXTURE){
                 color = material.getPixelAt(intersectionUV[0], intersectionUV[1]);
-            } else if(material.type = Material_Checker){
+            } else if(material.type == Material_Checker){
                 color = checkerTexture.getPixelAt(intersectionUV[0], intersectionUV[1], intersectionPosition);
-            } else if(material.type = Material_Glass) {
+            } else if(material.type == Material_Glass) {
                 float cosTheta = std::fmin(Vec3::dot(-1. * ray.direction(), intersectionNormal), 1.);
                 float sinTheta = std::sqrt(1.0 - cosTheta * cosTheta);
                 bool isInside = cosTheta < 0.;
