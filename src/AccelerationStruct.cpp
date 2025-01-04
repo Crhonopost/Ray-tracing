@@ -6,25 +6,9 @@
 #include <memory>
 #include <Mesh.h>
 #include <map>
+#include "Square.h"
+#include "Sphere.h"
 
-
-
-AABB::AABB(Vec3 center, float radius){
-    Vec3 diag(radius * 0.34);
-    min = center - diag;
-    max = center + diag;
-}
-AABB::AABB(Vec3 bottomLeft, Vec3 topLeft, Vec3 bottomRight){
-    Vec3 vertices[3] = {bottomLeft, topLeft, bottomRight};
-    min = bottomLeft;
-    max = bottomLeft;
-    for(const Vec3& pos: vertices){
-        for(int i=0; i<3; i++){
-            min[i] = std::min(pos[i], min[i]);
-            max[i] = std::max(pos[i], max[i]);
-        }
-    }
-}
 
 std::pair<bool, float> AABB::intersect(const Ray& ray, const AABB& box) {
     float tMin = 0.0f, tMax = 100.0f;
@@ -84,6 +68,26 @@ AABB BuildingTriangle::getBoundingBox(const std::vector<BuildingTriangle> & bTri
     return globalBox;
 }
 
+BuildingMesh::BuildingMesh(void* ref, int type, const AABB &boundingBox){
+    this->ref = ref;
+    this->type = type;
+    this->boundingBox = boundingBox;
+}
+
+AABB BuildingMesh::getBoundingBox(const std::vector<BuildingMesh> & bMeshes){
+    AABB globalBox(bMeshes[0].boundingBox);
+
+    for(BuildingMesh bMesh : bMeshes){
+        Vec3 bMin = bMesh.boundingBox.min;
+        Vec3 bMax = bMesh.boundingBox.max;
+        for(int i=0; i<3; i++){
+            globalBox.min[i] = std::min(globalBox.min[i], bMin[i]);
+            globalBox.max[i] = std::max(globalBox.max[i], bMax[i]);
+        }
+    }
+    return globalBox;
+}
+
 BVH_Node BVH_Node::buildBVH(
     const std::vector<Vec3> & positions, 
     const std::vector<MeshTriangle> & triangles, 
@@ -107,6 +111,42 @@ BVH_Node BVH_Node::buildBVH(
 
     return BVH_Node(bTriangles, deepLimit, box);
 }
+
+BVH_Node BVH_Node::buildBVH( 
+    std::vector<Square> & squares,
+    std::vector<Sphere> & spheres,
+    std::vector<RayTraceMesh> & meshes, 
+    int deepLimit, 
+    int comparisonIdx
+){
+    std::vector<BuildingMesh> bMeshes;
+    for(size_t i=0; i<squares.size(); i++){
+        BuildingMesh bMesh(&squares[i], 0, squares[i].getBoundingBox());
+        bMeshes.push_back(bMesh);
+    }
+    for(size_t i=0; i<spheres.size(); i++){
+        BuildingMesh bMesh(&spheres[i], 1, spheres[i].getBoundingBox());
+        bMeshes.push_back(bMesh);
+    }
+    for(size_t i=0; i<meshes.size(); i++){
+        BuildingMesh bMesh(&meshes[i], 2, meshes[i].getBoundingBox());
+        bMeshes.push_back(bMesh);
+    }
+
+    AABB box;
+    
+    for(auto& bMesh: bMeshes){
+        Vec3 bMin = bMesh.boundingBox.min;
+        Vec3 bMax = bMesh.boundingBox.max;
+        for(int i=0; i<3; i++){
+            box.min[i] = std::min(box.min[i], bMin[i]);
+            box.max[i] = std::max(box.max[i], bMax[i]);
+        }
+    }
+
+    return BVH_Node(bMeshes, deepLimit, box, comparisonIdx);
+}
+
 
 BVH_Node::BVH_Node(std::vector<BuildingTriangle> & bTriangles, int deepLimit, AABB currentBox){
     boundingBox = currentBox;
@@ -154,6 +194,54 @@ BVH_Node::BVH_Node(std::vector<BuildingTriangle> & bTriangles, int deepLimit, AA
     }
 }
 
+BVH_Node::BVH_Node(std::vector<BuildingMesh> & bMeshes, int deepLimit, AABB currentBox, int &comparisonIdx){
+    boundingBox = currentBox;
+    
+    if(deepLimit > 0 && bMeshes.size() > 2){
+        leaf = false;
+
+        Vec3 diag = boundingBox.max - boundingBox.min;
+
+        // Trouve l'index de l'axe le plus long de la boite
+        comparisonIdx %= 3;
+
+        Vec3 center = boundingBox.min + diag / 2.;
+
+        auto middle = std::partition(bMeshes.begin(), bMeshes.end(),
+        [center, comparisonIdx](const BuildingMesh& bMesh) {
+            return bMesh.boundingBox.getCenter()[comparisonIdx] < center[comparisonIdx];
+        });
+
+        std::vector<BuildingMesh> firstHalf(bMeshes.begin(), middle);
+        std::vector<BuildingMesh> secondHalf(middle, bMeshes.end());
+
+        
+        AABB emptyBox;
+        std::vector<BuildingMesh> emptyVec;
+
+        comparisonIdx++;
+        
+        if(firstHalf.size() >= 1){
+            AABB firstBox = BuildingMesh::getBoundingBox(firstHalf);
+            l_child = std::make_unique<BVH_Node>(firstHalf, deepLimit - 1, firstBox, comparisonIdx);
+        } else {
+            l_child = std::make_unique<BVH_Node>(emptyVec, 0, emptyBox, comparisonIdx);
+        }
+        if(secondHalf.size() >= 1){
+            AABB secondBox = BuildingMesh::getBoundingBox(secondHalf);
+            r_child = std::make_unique<BVH_Node>(secondHalf, deepLimit - 1, secondBox, comparisonIdx);
+        } else {
+            r_child = std::make_unique<BVH_Node>(emptyVec, 0, emptyBox, comparisonIdx);
+        }
+
+
+    } else {
+        for(const auto & bMesh: bMeshes){
+            meshes.push_back(bMesh);
+        }
+    }
+}
+
 void BVH_Node::getAABBs(std::vector<AABB>& aabbs) const{
     if(leaf){
         aabbs.push_back(boundingBox);
@@ -193,3 +281,68 @@ std::vector<size_t> BVH_Node::intersect(const Ray & ray, AABB parentBox) const{
         return std::vector<size_t>();
     }
 }
+
+// intersection with bMeshes to give a RayIntersection
+RayIntersection BVH_Node::intersectObjects(const Ray & ray, int& totalObjects, float lightDistance, bool stopAtFirst) const{
+    if (leaf) {
+        RayIntersection result;
+        totalObjects += meshes.size();
+        for(auto& obj: meshes){
+            if(obj.type == 0){
+                Square* square = static_cast<Square*>(obj.ref);
+                RayIntersection intersection = square->intersect(ray);
+                if(intersection.intersectionExists && intersection.t < result.t){
+                    result = intersection;
+                    if(stopAtFirst && intersection.t <= lightDistance) return result;
+                }
+            } else if(obj.type == 1){
+                Sphere* sphere = static_cast<Sphere*>(obj.ref);
+                RayIntersection intersection = sphere->intersect(ray);
+                if(intersection.intersectionExists && intersection.t < result.t){
+                    result = intersection;
+                    if(stopAtFirst && intersection.t <= lightDistance) return result;
+                }
+            } else if(obj.type == 2){
+                RayTraceMesh* mesh = static_cast<RayTraceMesh*>(obj.ref);
+                RayIntersection intersection = mesh->intersect(ray);
+                if(intersection.intersectionExists && intersection.t < result.t){
+                    result = intersection;
+                    if(stopAtFirst && intersection.t <= lightDistance) return result;
+                }
+            }
+        }
+        return result;
+    } else {
+        AABB leftBox = l_child->boundingBox;
+        AABB rightBox = r_child->boundingBox;
+
+        auto [hitL, tL] = AABB::intersect(ray, leftBox);
+        auto [hitR, tR] = AABB::intersect(ray, rightBox);
+
+        if (hitL && !hitR) {
+            return l_child->intersectObjects(ray, totalObjects, lightDistance, stopAtFirst);
+        } else if (hitR && !hitL) {
+            return r_child->intersectObjects(ray, totalObjects, lightDistance, stopAtFirst);
+        } else if (hitR && hitL) {
+            RayIntersection leftIntersection = l_child->intersectObjects(ray, totalObjects, lightDistance, stopAtFirst);
+            if (stopAtFirst && leftIntersection.intersectionExists) {return leftIntersection;}
+            
+            RayIntersection rightIntersection = r_child->intersectObjects(ray, totalObjects, lightDistance, stopAtFirst);
+            if (stopAtFirst && rightIntersection.intersectionExists) {return rightIntersection;}
+            
+
+            return leftIntersection.t <= rightIntersection.t ? leftIntersection : rightIntersection;
+        }
+        return RayIntersection();
+    }
+}
+
+
+void BVH_Node::draw() const {
+    boundingBox.draw();
+    if(!leaf){
+        l_child->draw();
+        r_child->draw();
+    }
+}
+

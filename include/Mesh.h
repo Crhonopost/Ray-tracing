@@ -113,6 +113,8 @@ public:
     void centerAndScaleToUnit ();
     void scaleUnit ();
 
+    AABB getBoundingBox() const;
+
     virtual
     void build_arrays() {
         recomputeNormals();
@@ -216,18 +218,7 @@ public:
         buildTree();
     }
 
-    void pushFace(Vec3 min, Vec3 max) const {
-        Vec3 v1(min[0], min[1], min[2]); 
-        Vec3 v2(max[0], max[1], min[2]); 
-        Vec3 v3(max[0], max[1], max[2]); 
-        Vec3 v4(min[0], min[1], max[2]); 
-
-        glVertex3f(v1[0], v1[1], v1[2]);
-        glVertex3f(v2[0], v2[1], v2[2]);
-        glVertex3f(v3[0], v3[1], v3[2]);
-        glVertex3f(v4[0], v4[1], v4[2]);
-    }
-    void drawAABB(const AABB& box) const;
+    AABB getBoundingBox() const;
 
     void buildTree(unsigned int nb_of_subdivide_tree = 3);
 

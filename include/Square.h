@@ -4,6 +4,7 @@
 #include <vector>
 #include "Mesh.h"
 #include <cmath>
+#include "AccelerationStruct.h"
 
 struct RaySquareIntersection{
     bool intersectionExists;
@@ -107,6 +108,18 @@ public:
         result.material = material;
 
         return result;
+    }
+
+    AABB getBoundingBox() const{
+        Vec3 min = vertices[0].position;
+        Vec3 max = vertices[0].position;
+        for(const auto & vertex : vertices){
+            for(int i=0; i<3; i++){
+                min[i] = std::min(min[i], vertex.position[i]);
+                max[i] = std::max(max[i], vertex.position[i]);
+            }
+        }
+        return AABB(min, max);
     }
     
 };

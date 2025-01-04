@@ -4,6 +4,7 @@
 #include <vector>
 #include "Mesh.h"
 #include <cmath>
+#include "AccelerationStruct.h"
 
 struct RaySphereIntersection{
     bool intersectionExists;
@@ -142,6 +143,11 @@ public:
 
 
         return result;
+    }
+
+    AABB getBoundingBox() const{
+        Vec3 diag(m_radius);
+        return AABB(m_center - diag, m_center + diag);
     }
 };
 #endif

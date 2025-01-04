@@ -89,39 +89,9 @@ void RayTraceMesh::draw() const {
         triangleTree->getAABBs(aabbs);
 
         for (const auto& box : aabbs) {
-            drawAABB(box);
+            box.draw();
         }
     }
-}
-
-void RayTraceMesh::drawAABB(const AABB& box) const{
-    GLfloat color[4] = {1.0f, 0.08f, 0.58f, 1.0f};
-
-    glMaterialfv(GL_FRONT_AND_BACK, GL_SPECULAR, color);
-    glMaterialfv(GL_FRONT_AND_BACK, GL_DIFFUSE, color);
-    glMaterialfv(GL_FRONT_AND_BACK, GL_AMBIENT, color);
-
-    glLineWidth(2.f);
-    glBegin(GL_LINE_LOOP);
-
-    Vec3 min = box.min;
-    Vec3 max = box.max;
-
-    Vec3 diag = max - min;
-
-    pushFace(min, min + Vec3(diag[0], 0, diag[2]));
-    pushFace(min, min + Vec3(0, diag[1], diag[2]));
-    
-    Vec3 nextPoint = min + Vec3(0, diag[1], diag[2]); 
-    glVertex3f(nextPoint[0], nextPoint[1], nextPoint[2]);
-    
-    pushFace(max, max - Vec3(0, diag[1], diag[2]));
-    pushFace(max, max - Vec3(diag[0], 0, diag[2]));
-    
-    nextPoint = max - Vec3(diag[0], 0, diag[2]); 
-    glVertex3f(nextPoint[0], nextPoint[1], nextPoint[2]);
-
-    glEnd();
 }
 
 RayIntersection RayTraceMesh::intersect( Ray const & ray ) const {
@@ -205,4 +175,8 @@ void RayTraceMesh::buildTree(unsigned int nb_of_subdivide_tree){
     //         }
     //     }
     // }
+}
+
+AABB RayTraceMesh::getBoundingBox() const {
+    return *boundingBox;
 }

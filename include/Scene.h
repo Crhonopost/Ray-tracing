@@ -6,6 +6,7 @@
 #include "Mesh.h"
 #include "Sphere.h"
 #include "Square.h"
+#include "Logger.h"
 
 
 #include <GL/glut.h>
@@ -44,6 +45,8 @@ class Scene {
     std::vector< Sphere > spheres;
     std::vector< Square > squares;
 
+    BVH_Node sceneBvh;
+
     std::vector< Light > lights;
 
     CheckerTexture checkerTexture = CheckerTexture(4, Vec3(0), Vec3(1));
@@ -66,37 +69,23 @@ public:
         }
         for(auto & sphere : spheres){
             sphere.draw();
+            sphere.getBoundingBox().draw();
         }
         for(auto & square : squares){
             square.draw();
+            square.getBoundingBox().draw();
         }
+
+        // sceneBvh.draw();
     }
 
 
 
 
     RayIntersection computeIntersection(Ray const & ray) {
-        RayIntersection result;
-
-        for(auto & mesh : meshes){
-            RayIntersection intersection = mesh.intersect(ray);
-            if(intersection.intersectionExists && result.t > intersection.t){
-                result = intersection;
-            }
-        }
-        for(auto & sphere : spheres){
-            RayIntersection intersection = sphere.intersect(ray);
-            if(intersection.intersectionExists && result.t > intersection.t){
-                result = intersection;
-            }
-        }
-        for(auto & square : squares){
-            RayIntersection intersection = square.intersect(ray);
-            if(intersection.intersectionExists && result.t > intersection.t){
-                result = intersection;
-            }
-        }
-
+        ScopedLogger logger("computeIntersection");
+        int count = 0;
+        auto result = sceneBvh.intersectObjects(ray, count);
         return result;
     }
 
@@ -174,28 +163,11 @@ public:
         Vec3 direction = lightPos - intersectionPos;
         float length = direction.length();
         direction.normalize();
-        Ray ray = Ray(intersectionPos, direction);
+        Ray ray = Ray(intersectionPos + direction* 0.001, direction);
 
-        for(auto & mesh : meshes){
-            RayIntersection intersection = mesh.intersect(ray);
-            if(intersection.intersectionExists && intersection.t > 0.001 && intersection.t < length){
-                return true;
-            }
-        }
-        for(auto & sphere : spheres){
-            RayIntersection intersection = sphere.intersect(ray);
-            if(intersection.intersectionExists && intersection.t > 0.001 && intersection.t < length){
-                return true;
-            }
-        }
-        for(auto & square : squares){
-            RayIntersection intersection = square.intersect(ray);
-            if(intersection.intersectionExists && intersection.t > 0.001 && intersection.t < length){
-                return true;
-            }
-        }
-
-        return false;
+        int count = 0;
+        RayIntersection result = sceneBvh.intersectObjects(ray, count, length, true);
+        return result.intersectionExists && result.t <= length;
     }
 
 
@@ -217,25 +189,25 @@ public:
             material = raySceneIntersection.material;
 
             if(material.type == MATERIAL_TEXTURE){
+                ScopedLogger logger("Texture material");
                 color = material.getPixelAt(intersectionUV[0], intersectionUV[1]);;
-                material.ambient_material = color;
-                material.diffuse_material = color;
-                material.specular_material = color;
-            }
-
-            if(material.type == Material_Diffuse_Blinn_Phong || NRemainingBounces<=0){
-                
+            } else if(material.type == Material_Diffuse_Blinn_Phong || NRemainingBounces<=0){
+                ScopedLogger logger("Diffuse material");
                 color = phong(light.material, light.pos, intersectionPosition, intersectionNormal, -1 * ray.direction(), material);
-
             } else if(material.type == Material_Mirror) {
+                ScopedLogger logger("Mirror material");
                 Vec3 newDirection = Material::reflect(ray.direction(), intersectionNormal);
                 Ray newRay = Ray(intersectionPosition + intersectionNormal*0.001, newDirection);
                 color = Vec3::compProduct(material.specular_material, rayTraceRecursive(newRay, NRemainingBounces-1));
             } else if(material.type == MATERIAL_TEXTURE){
+                ScopedLogger logger("Texture material");
                 color = material.getPixelAt(intersectionUV[0], intersectionUV[1]);
             } else if(material.type == Material_Checker){
+                ScopedLogger logger("Checker material");
                 color = checkerTexture.getPixelAt(intersectionUV[0], intersectionUV[1], intersectionPosition);
             } else if(material.type == Material_Glass) {
+                ScopedLogger logger("Glass material");
+
                 float cosTheta = std::fmin(Vec3::dot(-1. * ray.direction(), intersectionNormal), 1.);
                 float sinTheta = std::sqrt(1.0 - cosTheta * cosTheta);
                 bool isInside = cosTheta < 0.;
@@ -255,11 +227,15 @@ public:
                 
                 color = rayTraceRecursive(newRay, NRemainingBounces-1);
             }
-        // shadow casting
-        // float shadowStrength = sampleSphereLight(intersectionPosition, light.pos, light.radius, 45);
-        float shadowStrength = isInShadow(intersectionPosition, light.pos);
-        // float shadowStrength = 0.;
-        color *= (1. - (shadowStrength * shadowStrength));
+
+            {
+                ScopedLogger logger("Shadow");
+                // shadow casting
+                float shadowStrength = sampleSphereLight(intersectionPosition, light.pos, light.radius, 15);
+                // float shadowStrength = isInShadow(intersectionPosition, light.pos);
+                // float shadowStrength = 0.;
+                color *= (1. - (shadowStrength * shadowStrength));
+            }
 
         }
         return color;
@@ -296,6 +272,8 @@ public:
             s.material.specular_material = Vec3( 0.2,0.2,0.2 );
             s.material.shininess = 20;
         }
+
+        sceneBvh =BVH_Node::buildBVH(squares, spheres, meshes);
     }
 
     void setup_single_square() {
@@ -324,6 +302,8 @@ public:
             s.material.specular_material = Vec3( 0.8,0.8,0.8 );
             s.material.shininess = 20;
         }
+
+        sceneBvh =BVH_Node::buildBVH(squares, spheres, meshes);
     }
 
     void setup_cornell_box(){
@@ -353,8 +333,8 @@ public:
             s.material.diffuse_material = Vec3( 0.5,0.,0.5 );
             s.material.specular_material = Vec3( 0.5,0.,0.5 );
             s.material.shininess = 16;
-            s.material.type = MATERIAL_TEXTURE;
-            ppmLoader::load_ppm(s.material.texture, "assets/img/sphereTextures/s4.ppm");
+            // s.material.type = MATERIAL_TEXTURE;
+            // ppmLoader::load_ppm(s.material.texture, "assets/img/sphereTextures/s4.ppm");
         }
 
         { //Left Wall
@@ -458,28 +438,29 @@ public:
             s.m_center = Vec3(-0.75, 0, -0.75);
             s.m_radius = 0.5f;
             s.build_arrays();
-            s.material.type = MATERIAL_TEXTURE;
+            s.material.type = Material_Diffuse_Blinn_Phong;
             s.material.diffuse_material = Vec3( 1.,1.,1. );
             s.material.specular_material = Vec3(  1.,1.,1. );
             s.material.shininess = 16;
-            ppmLoader::load_ppm(s.material.texture, "assets/img/sphereTextures/s1.ppm");
+            // ppmLoader::load_ppm(s.material.texture, "assets/img/sphereTextures/s4.ppm");
         }
 
-        // {
-        //     meshes.resize( meshes.size() + 1 );
-        //     Mesh & mesh = meshes[meshes.size() - 1];
-        //     mesh.loadOFF("assets/models/gorilla18_fixed.obj.off");
-        //     mesh.scale(Vec3(0.0125));
-        //     mesh.translate(Vec3{0, -1.05, 0});
-        //     mesh.build_arrays();
-        //     mesh.material.type = Material_Glass;
-        //     mesh.material.diffuse_material = Vec3( 1.,1.,1. );
-        //     mesh.material.specular_material = Vec3( 1.,1.,1. );
-        //     mesh.material.shininess = 16;
-        //     mesh.material.transparency = 1.0;
-        //     mesh.material.index_medium = 1.4;
-        // }
+        {
+            meshes.resize( meshes.size() + 1 );
+            Mesh & mesh = meshes[meshes.size() - 1];
+            mesh.loadOFF("assets/models/gorilla18_fixed.obj.off");
+            mesh.scale(Vec3(0.0125));
+            mesh.translate(Vec3{0, -1.05, 0});
+            mesh.build_arrays();
+            mesh.material.type = Material_Glass;
+            mesh.material.diffuse_material = Vec3( 1.,1.,1. );
+            mesh.material.specular_material = Vec3( 1.,1.,1. );
+            mesh.material.shininess = 16;
+            mesh.material.transparency = 1.0;
+            mesh.material.index_medium = 1.2;
+        }
 
+        sceneBvh =BVH_Node::buildBVH(squares, spheres, meshes);
     }
 
     void setup_refraction_scene(){
@@ -565,6 +546,7 @@ public:
             s.material.transparency = 1.0;
             s.material.index_medium = 1.4;
         }
+        sceneBvh =BVH_Node::buildBVH(squares, spheres, meshes);
     }
 
     void setup_test_scene(){
@@ -648,23 +630,7 @@ public:
         //     mesh.material.transparency = 1.0;
         //     mesh.material.index_medium = 1.4;
         // }
-
-        
-    //     {
-    //         meshes.resize( meshes.size() + 1 );
-    //         Mesh & mesh = meshes[meshes.size() - 1];
-    //         mesh.loadOFF("assets/models/blob.off");
-    //         mesh.rotate_x(180);
-    //         mesh.rotate_y(45);
-    //         mesh.translate(Vec3{-0.125, -1.05, -1.25});
-    //         mesh.build_arrays();
-    //         // mesh.material.type = Material_Glass;
-    //         mesh.material.diffuse_material = Vec3( 1.,1.,1. );
-    //         mesh.material.specular_material = Vec3( 1.,1.,1. );
-    //         mesh.material.shininess = 16;
-    //         mesh.material.transparency = 0.5;
-    //         mesh.material.index_medium = 0.;
-    //     }
+        sceneBvh =BVH_Node::buildBVH(squares, spheres, meshes);
     }
 };
 

@@ -60,7 +60,6 @@ std::vector<Scene> scenes;
 Settings settings;
 unsigned int selected_scene;
 
-std::mutex image_mutex;
 std::vector< std::pair< Vec3 , Vec3 > > rays;
 
 void printUsage () {
@@ -175,6 +174,7 @@ void idle () {
 
 
 void ray_trace_from_camera() {
+    GlobalLogger::getInstance();
     const auto startTime = std::chrono::high_resolution_clock::now();
 
     int w = glutGet(GLUT_WINDOW_WIDTH)  ,   h = glutGet(GLUT_WINDOW_HEIGHT);
@@ -204,15 +204,13 @@ void ray_trace_from_camera() {
         for (int y = 0; y < h; ++y) {
             for (int x = 0; x < w; ++x) {
                 pool.enqueue([&, x, y] {
+                    ScopedLogger logger("Ray");
                     Vec3 pixel_color(0, 0, 0);
                     for (const auto& ray : rays[x + y * w]) {
                         Vec3 color = scenes[selected_scene].rayTrace(Ray(ray.first, ray.second));
                         pixel_color += color;
                     }
                     pixel_color /= nsamples;
-
-                    // Lock the mutex before updating the image
-                    std::lock_guard<std::mutex> lock(image_mutex);
                     image[x + y * w] = pixel_color;
                 });
             }
@@ -238,6 +236,8 @@ void ray_trace_from_camera() {
         f << (int)(255.f*std::min<float>(1.f,image[i][0])) << " " << (int)(255.f*std::min<float>(1.f,image[i][1])) << " " << (int)(255.f*std::min<float>(1.f,image[i][2])) << " ";
     f << std::endl;
     f.close();
+
+    GlobalLogger::getInstance().printAverages();
 }
 
 
