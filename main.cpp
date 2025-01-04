@@ -28,6 +28,7 @@
 #include "include/Camera.h"
 #include "include/Scene.h"
 #include <GL/glut.h>
+#include "include/ThreadPool.h"
 
 #include "include/matrixUtilities.h"
 
@@ -52,11 +53,14 @@ static bool mouseZoomPressed = false;
 static int lastX=0, lastY=0, lastZoom=0;
 static unsigned int FPS = 0;
 static bool fullScreen = false;
+// 70% of the threads are used for rendering
+static float maxThreadPercentage = 0.6;
 
 std::vector<Scene> scenes;
 Settings settings;
 unsigned int selected_scene;
 
+std::mutex image_mutex;
 std::vector< std::pair< Vec3 , Vec3 > > rays;
 
 void printUsage () {
@@ -179,20 +183,46 @@ void ray_trace_from_camera() {
     Vec3 pos , dir;
     //    unsigned int nsamples = 100;
     unsigned int nsamples = 30;
-    std::vector< Vec3 > image( w*h , Vec3(0,0,0) );
-    for (int y=0; y<h; y++){
-        for (int x=0; x<w; x++) {
-            for( unsigned int s = 0 ; s < nsamples ; ++s ) {
-                float u = ((float)(x) + (float)(rand())/(float)(RAND_MAX)) / w;
-                float v = ((float)(y) + (float)(rand())/(float)(RAND_MAX)) / h;
-                // this is a random uv that belongs to the pixel xy.
-                screen_space_to_world_space_ray(u,v,pos,dir);
-                Vec3 color = scenes[selected_scene].rayTrace( Ray(pos , dir) );
-                image[x + y*w] += color;
+
+    std::vector<std::vector<std::pair<Vec3, Vec3>>> rays(w * h);
+    for (int y = 0; y < h; ++y) {
+        for (int x = 0; x < w; ++x) {
+            for (unsigned int s = 0; s < nsamples; ++s) {
+                float u = ((float)(x) + (float)(rand()) / (float)(RAND_MAX)) / w;
+                float v = ((float)(y) + (float)(rand()) / (float)(RAND_MAX)) / h;
+                screen_space_to_world_space_ray(u, v, pos, dir);
+                rays[x + y * w].emplace_back(pos, dir);
             }
-            image[x + y*w] /= nsamples;
         }
     }
+
+    std::vector< Vec3 > image( w*h , Vec3(0,0,0) );
+    unsigned int nbThreads = std::thread::hardware_concurrency() * maxThreadPercentage;
+    ThreadPool pool(nbThreads);
+
+    {    
+        for (int y = 0; y < h; ++y) {
+            for (int x = 0; x < w; ++x) {
+                pool.enqueue([&, x, y] {
+                    Vec3 pixel_color(0, 0, 0);
+                    for (const auto& ray : rays[x + y * w]) {
+                        Vec3 color = scenes[selected_scene].rayTrace(Ray(ray.first, ray.second));
+                        pixel_color += color;
+                    }
+                    pixel_color /= nsamples;
+
+                    // Lock the mutex before updating the image
+                    std::lock_guard<std::mutex> lock(image_mutex);
+                    image[x + y * w] = pixel_color;
+                });
+            }
+        }
+    }
+
+    while(!pool.finished()) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    }
+    
     const auto stopTime = std::chrono::high_resolution_clock::now();
     const auto duration = std::chrono::duration_cast<std::chrono::seconds>(stopTime - startTime);
     cout << "Done in: " << duration.count() << "s" << endl;

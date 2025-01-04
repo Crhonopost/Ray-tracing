@@ -45,6 +45,10 @@ std::pair<bool, float> AABB::intersect(const Ray& ray, const AABB& box) {
     return {true, tMin};
 }
 
+Vec3 AABB::getCenter() const{
+    return (min + max) / 2.;
+}
+
 BuildingTriangle::BuildingTriangle(const MeshTriangle & ref, size_t index, const std::vector<Vec3> & positions){
     this->index = index;
     Vec3 a,b,c;
