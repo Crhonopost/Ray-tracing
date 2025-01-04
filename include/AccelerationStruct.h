@@ -12,6 +12,17 @@ struct AABB {
     Vec3 min;
     Vec3 max;
 
+    AABB(){
+        min = Vec3(INFINITY);
+        max = Vec3(-INFINITY);
+    }
+    AABB(AABB const & box){
+        min = box.min;
+        max = box.max;
+    }
+    AABB(Vec3 center, float radius);
+    AABB(Vec3 bottomLeft, Vec3 topLeft, Vec3 bottomRight);
+
     // https://www.scratchapixel.com/lessons/3d-basic-rendering/minimal-ray-tracer-rendering-simple-shapes/ray-box-intersection.html
     static std::pair<bool, float> intersect(const Ray& ray, const AABB& box);
 };
@@ -63,18 +74,20 @@ struct BVH_Node {
 
 #endif
 
-//struct KdTree {
+// struct KdTree {
 //     int comparisonIdx = -1;
 //     Vec3 comparedVal;
 
-//     std::unique_ptr<KdTree<T>> l_child;
-//     std::unique_ptr<KdTree<T>> r_child;
+//     std::unique_ptr<KdTree> l_child;
+//     std::unique_ptr<KdTree> r_child;
 
-//     std::vector<T> values;
+//     std::vector<void*> objects;
 
-//     KdTree<T>() = default;
+//     KdTree() = default;
 
-//     KdTree<T>(std::vector<Vec3> positions, int deepLimit, int comparisonIdx) {
+//     // Old constructor
+//     // KdTree(std::vector<Vec3> positions, int deepLimit, int comparisonIdx) {
+//     KdTree(std::vector<std::pair<AABB, void*>> positions, int deepLimit, int comparisonIdx) {
 //         if(deepLimit > 0 && positions.size() > 1){
 //             this->comparisonIdx = comparisonIdx;
 

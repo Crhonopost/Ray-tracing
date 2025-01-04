@@ -7,6 +7,25 @@
 #include <Mesh.h>
 #include <map>
 
+
+
+AABB::AABB(Vec3 center, float radius){
+    Vec3 diag(radius * 0.34);
+    min = center - diag;
+    max = center + diag;
+}
+AABB::AABB(Vec3 bottomLeft, Vec3 topLeft, Vec3 bottomRight){
+    Vec3 vertices[3] = {bottomLeft, topLeft, bottomRight};
+    min = bottomLeft;
+    max = bottomLeft;
+    for(const Vec3& pos: vertices){
+        for(int i=0; i<3; i++){
+            min[i] = std::min(pos[i], min[i]);
+            max[i] = std::max(pos[i], max[i]);
+        }
+    }
+}
+
 std::pair<bool, float> AABB::intersect(const Ray& ray, const AABB& box) {
     float tMin = 0.0f, tMax = 100.0f;
 
@@ -48,10 +67,7 @@ BuildingTriangle::BuildingTriangle(const MeshTriangle & ref, size_t index, const
 }
 
 AABB BuildingTriangle::getBoundingBox(const std::vector<BuildingTriangle> & bTriangles){
-    AABB globalBox;
-    globalBox.min = bTriangles[0].box.min;
-    globalBox.max = bTriangles[0].box.max;
-
+    AABB globalBox(bTriangles[0].box);
 
     for(BuildingTriangle bTriangle : bTriangles){
         Vec3 bMin = bTriangle.box.min;
@@ -76,19 +92,15 @@ BVH_Node BVH_Node::buildBVH(
         bTriangles.push_back(btriangle);
     }
 
-    Vec3 min = positions[0];
-    Vec3 max = positions[0];
+    AABB box;
 
     for(auto pos: positions){
         for(int i=0; i<3; i++){
-            min[i] = pos[i] < min[i] ? pos[i] : min[i];
-            max[i] = pos[i] > max[i] ? pos[i] : max[i];
+            box.min[i] = pos[i] < box.min[i] ? pos[i] : box.min[i];
+            box.max[i] = pos[i] > box.max[i] ? pos[i] : box.max[i];
         }
     }
 
-    AABB box;
-    box.max = max;
-    box.min = min;
     return BVH_Node(bTriangles, deepLimit, box);
 }
 
@@ -115,8 +127,6 @@ BVH_Node::BVH_Node(std::vector<BuildingTriangle> & bTriangles, int deepLimit, AA
 
         
         AABB emptyBox;
-        emptyBox.min = Vec3(0);
-        emptyBox.max = Vec3(0);
         std::vector<BuildingTriangle> emptyVec;
         
         if(firstHalf.size() >= 1){

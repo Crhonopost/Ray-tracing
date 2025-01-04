@@ -101,9 +101,6 @@ protected:
 public:
     std::vector<MeshVertex> vertices;
     std::vector<MeshTriangle> triangles;
-    std::unique_ptr<BVH_Node> triangleTree;
-
-    std::unique_ptr<AABB> boundingBox;
 
     std::vector< float > positions_array;
     std::vector< float > normalsArray;
@@ -111,12 +108,10 @@ public:
     std::vector< unsigned int > triangles_array;
 
     Material material;
-
     void loadOFF (const std::string & filename);
     void recomputeNormals ();
     void centerAndScaleToUnit ();
     void scaleUnit ();
-
 
     virtual
     void build_arrays() {
@@ -125,7 +120,6 @@ public:
         build_normals_array();
         build_UVs_array();
         build_triangles_array();
-        buildTree();
     }
 
 
@@ -179,20 +173,6 @@ public:
 
     void draw() const;
 
-
-    void pushFace(Vec3 min, Vec3 max) const {
-        Vec3 v1(min[0], min[1], min[2]); 
-        Vec3 v2(max[0], max[1], min[2]); 
-        Vec3 v3(max[0], max[1], max[2]); 
-        Vec3 v4(min[0], min[1], max[2]); 
-
-        glVertex3f(v1[0], v1[1], v1[2]);
-        glVertex3f(v2[0], v2[1], v2[2]);
-        glVertex3f(v3[0], v3[1], v3[2]);
-        glVertex3f(v4[0], v4[1], v4[2]);
-    }
-    void drawAABB(const AABB& box) const;
-
     // RayTriangleIntersection intersect( Ray const & ray ) const {
     //     RayTriangleIntersection closestIntersection;
     //     closestIntersection.t = FLT_MAX;
@@ -220,11 +200,40 @@ public:
     //     return closestIntersection;
     // }
 
-    RayTriangleIntersection intersect( Ray const & ray ) const;
-
-    void buildTree(unsigned int nb_of_subdivide_tree = 3);
+    virtual
+    RayIntersection intersect( Ray const & ray ) const{return RayIntersection();};
 };
 
+
+class RayTraceMesh : public Mesh{
+    std::unique_ptr<BVH_Node> triangleTree;
+
+    std::unique_ptr<AABB> boundingBox;
+
+public:
+    void build_arrays() {
+        Mesh::build_arrays();
+        buildTree();
+    }
+
+    void pushFace(Vec3 min, Vec3 max) const {
+        Vec3 v1(min[0], min[1], min[2]); 
+        Vec3 v2(max[0], max[1], min[2]); 
+        Vec3 v3(max[0], max[1], max[2]); 
+        Vec3 v4(min[0], min[1], max[2]); 
+
+        glVertex3f(v1[0], v1[1], v1[2]);
+        glVertex3f(v2[0], v2[1], v2[2]);
+        glVertex3f(v3[0], v3[1], v3[2]);
+        glVertex3f(v4[0], v4[1], v4[2]);
+    }
+    void drawAABB(const AABB& box) const;
+
+    void buildTree(unsigned int nb_of_subdivide_tree = 3);
+
+    void draw() const;
+    RayIntersection intersect( Ray const & ray ) const;
+};
 
 
 

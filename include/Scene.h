@@ -25,23 +25,12 @@ struct Light {
     Vec3 pos;
     float radius;
 
-    Mesh quad;
+    Square quad;
 
     float powerCorrection;
 
     Light() : powerCorrection(1.0) {}
 
-};
-
-struct RaySceneIntersection{
-    bool intersectionExists;
-    unsigned int typeOfIntersectedObject;
-    unsigned int objectIndex;
-    float t;
-    RayTriangleIntersection rayMeshIntersection;
-    RaySphereIntersection raySphereIntersection;
-    RaySquareIntersection raySquareIntersection;
-    RaySceneIntersection() : intersectionExists(false) , t(FLT_MAX) {}
 };
 
 
@@ -51,9 +40,10 @@ struct Settings{
 
 
 class Scene {
-    std::vector< Mesh > meshes;
+    std::vector< RayTraceMesh > meshes;
     std::vector< Sphere > spheres;
     std::vector< Square > squares;
+
     std::vector< Light > lights;
 
     CheckerTexture checkerTexture = CheckerTexture(4, Vec3(0), Vec3(1));
@@ -71,16 +61,13 @@ public:
 
     void draw() {
         // iterer sur l'ensemble des objets, et faire leur rendu :
-        for( unsigned int It = 0 ; It < meshes.size() ; ++It ) {
-            Mesh const & mesh = meshes[It];
+        for(auto & mesh : meshes){
             mesh.draw();
         }
-        for( unsigned int It = 0 ; It < spheres.size() ; ++It ) {
-            Sphere const & sphere = spheres[It];
+        for(auto & sphere : spheres){
             sphere.draw();
         }
-        for( unsigned int It = 0 ; It < squares.size() ; ++It ) {
-            Square const & square = squares[It];
+        for(auto & square : squares){
             square.draw();
         }
     }
@@ -88,49 +75,28 @@ public:
 
 
 
-    RaySceneIntersection computeIntersection(Ray const & ray) {
-        RaySceneIntersection result;
-        result.intersectionExists = false;
-        for(int i=0; i<spheres.size(); i++){
-            Sphere &sphere = spheres[i];
-            RaySphereIntersection intersection = sphere.intersect(ray);
-            if (intersection.intersectionExists){
-                if(!result.intersectionExists || result.t > intersection.t){
-                    result.intersectionExists = true;
-                    result.typeOfIntersectedObject = 1;
-                    result.objectIndex = i;
-                    result.t = intersection.t;
-                    result.raySphereIntersection = intersection;
-                }
+    RayIntersection computeIntersection(Ray const & ray) {
+        RayIntersection result;
+
+        for(auto & mesh : meshes){
+            RayIntersection intersection = mesh.intersect(ray);
+            if(intersection.intersectionExists && result.t > intersection.t){
+                result = intersection;
+            }
+        }
+        for(auto & sphere : spheres){
+            RayIntersection intersection = sphere.intersect(ray);
+            if(intersection.intersectionExists && result.t > intersection.t){
+                result = intersection;
+            }
+        }
+        for(auto & square : squares){
+            RayIntersection intersection = square.intersect(ray);
+            if(intersection.intersectionExists && result.t > intersection.t){
+                result = intersection;
             }
         }
 
-        for(int i=0; i<squares.size(); i++){
-            Square &square = squares[i];
-            RaySquareIntersection intersection = square.intersect(ray);
-            if (intersection.intersectionExists){
-                if(!result.intersectionExists || result.t > intersection.t){
-                    result.intersectionExists = true;
-                    result.typeOfIntersectedObject = 2;
-                    result.objectIndex = i;
-                    result.t = intersection.t;
-                    result.raySquareIntersection = intersection;
-                }
-            }
-        }
-        for(int i=0; i<meshes.size(); i++){
-            Mesh &mesh = meshes[i];
-            RayTriangleIntersection intersection = mesh.intersect(ray);
-            if (intersection.intersectionExists){
-                if(!result.intersectionExists || result.t > intersection.t){
-                    result.intersectionExists = true;
-                    result.typeOfIntersectedObject = 0;
-                    result.objectIndex = i;
-                    result.t = intersection.t;
-                    result.rayMeshIntersection = intersection;
-                }
-            }
-        }
         return result;
     }
 
@@ -210,32 +176,23 @@ public:
         direction.normalize();
         Ray ray = Ray(intersectionPos, direction);
 
-        size_t i=0;
-        while(i < meshes.size()){
-            Mesh &mesh = meshes[i];
-            RayTriangleIntersection intersection = mesh.intersect(ray);
+        for(auto & mesh : meshes){
+            RayIntersection intersection = mesh.intersect(ray);
             if(intersection.intersectionExists && intersection.t > 0.001 && intersection.t < length){
                 return true;
             }
-            i++;
         }
-        i=0;
-        while(i < spheres.size()){
-            Sphere &sphere = spheres[i];
-            RaySphereIntersection intersection = sphere.intersect(ray);
+        for(auto & sphere : spheres){
+            RayIntersection intersection = sphere.intersect(ray);
             if(intersection.intersectionExists && intersection.t > 0.001 && intersection.t < length){
                 return true;
             }
-            i++;
         }
-        i=0;
-        while(i < squares.size()){
-            Square &square = squares[i];
-            RaySquareIntersection intersection = square.intersect(ray);
+        for(auto & square : squares){
+            RayIntersection intersection = square.intersect(ray);
             if(intersection.intersectionExists && intersection.t > 0.001 && intersection.t < length){
                 return true;
             }
-            i++;
         }
 
         return false;
@@ -246,50 +203,18 @@ public:
 
 
     Vec3 rayTraceRecursive( Ray ray , int NRemainingBounces ) {
-        RaySceneIntersection raySceneIntersection = computeIntersection(ray);
+        RayIntersection raySceneIntersection = computeIntersection(ray);
         Vec3 color = Vec3{0.1, 0.2, 0.3};
         Light &light = lights[0];
 
         if(raySceneIntersection.intersectionExists){
-            Vec3 intersectionPosition, intersectionNormal, intersectionUV, direction;
+            Vec3 intersectionPosition, intersectionNormal, intersectionUV;
             Material material;
 
-            switch (raySceneIntersection.typeOfIntersectedObject)
-            {
-            case 0:
-                material = meshes[raySceneIntersection.objectIndex].material;
-                intersectionNormal = raySceneIntersection.rayMeshIntersection.normal;
-                intersectionPosition = raySceneIntersection.rayMeshIntersection.intersection;
-                break;
-            case 1:
-            // sphere intersection
-                material = spheres[raySceneIntersection.objectIndex].material;
-                intersectionNormal = raySceneIntersection.raySphereIntersection.normal;
-                intersectionPosition = raySceneIntersection.raySphereIntersection.intersection;
-                
-                direction = spheres[raySceneIntersection.objectIndex].m_center - intersectionPosition;
-
-                // https://en.wikipedia.org/wiki/UV_mapping
-                intersectionUV = Vec3(
-                    0.5 + (std::atan2(direction[2], direction[0]) / (2. * M_PI)),
-                    0.5 + (std::asin(direction[1]) /  M_PI),
-                    0
-                );
-                break;
-            case 2:
-            // square intersection
-                material = squares[raySceneIntersection.objectIndex].material;
-                intersectionNormal = raySceneIntersection.raySquareIntersection.normal;
-                intersectionPosition = raySceneIntersection.raySquareIntersection.intersection;
-                intersectionUV = Vec3(
-                    raySceneIntersection.raySquareIntersection.u,
-                    raySceneIntersection.raySquareIntersection.v,
-                    0);
-                break;            
-            default:
-                return Vec3(0.1,0.1,1.0);
-                break;
-            }
+            intersectionPosition = raySceneIntersection.position;
+            intersectionNormal = raySceneIntersection.normal;
+            intersectionUV = Vec3(raySceneIntersection.u, raySceneIntersection.v, 0);
+            material = raySceneIntersection.material;
 
             if(material.type == MATERIAL_TEXTURE){
                 color = material.getPixelAt(intersectionUV[0], intersectionUV[1]);;
@@ -365,8 +290,6 @@ public:
         {
             spheres.resize( spheres.size() + 1 );
             Sphere & s = spheres[spheres.size() - 1];
-            s.m_center = Vec3(0. , 0. , 0.);
-            s.m_radius = 1.f;
             s.build_arrays();
             s.material.type = Material_Mirror;
             s.material.diffuse_material = Vec3( 1.,1.,1 );
@@ -421,7 +344,7 @@ public:
         }
 
         { //Back Wall
-            squares.resize( squares.size() + 1 );
+            squares.resize(squares.size() + 1);
             Square & s = squares[squares.size() - 1];
             s.setQuad(Vec3(-1., -1., 0.), Vec3(1., 0, 0.), Vec3(0., 1, 0.), 2., 2.);
             s.scale(Vec3(2., 2., 1.));
@@ -435,8 +358,7 @@ public:
         }
 
         { //Left Wall
-
-            squares.resize( squares.size() + 1 );
+            squares.resize(squares.size() + 1);
             Square & s = squares[squares.size() - 1];
             s.setQuad(Vec3(-1., -1., 0.), Vec3(1., 0, 0.), Vec3(0., 1, 0.), 2., 2.);
             s.scale(Vec3(2., 2., 1.));
@@ -449,7 +371,7 @@ public:
         }
 
         { //Right Wall
-            squares.resize( squares.size() + 1 );
+            squares.resize(squares.size() + 1);
             Square & s = squares[squares.size() - 1];
             s.setQuad(Vec3(-1., -1., 0.), Vec3(1., 0, 0.), Vec3(0., 1, 0.), 2., 2.);
             s.translate(Vec3(0., 0., -2.));
@@ -462,7 +384,7 @@ public:
         }
 
         { //Floor
-            squares.resize( squares.size() + 1 );
+            squares.resize(squares.size() + 1);
             Square & s = squares[squares.size() - 1];
             s.setQuad(Vec3(-1., -1., 0.), Vec3(1., 0, 0.), Vec3(0., 1, 0.), 2., 2.);
             s.translate(Vec3(0., 0., -2.));
@@ -475,7 +397,7 @@ public:
         }
 
         { //Ceiling
-            squares.resize( squares.size() + 1 );
+            squares.resize(squares.size() + 1);
             Square & s = squares[squares.size() - 1];
             s.setQuad(Vec3(-1., -1., 0.), Vec3(1., 0, 0.), Vec3(0., 1, 0.), 2., 2.);
             s.translate(Vec3(0., 0., -2.));
@@ -488,7 +410,7 @@ public:
         }
 
         { //Front Wall
-            squares.resize( squares.size() + 1 );
+            squares.resize(squares.size() + 1);
             Square & s = squares[squares.size() - 1];
             s.setQuad(Vec3(-1., -1., 0.), Vec3(1., 0, 0.), Vec3(0., 1, 0.), 2., 2.);
             s.translate(Vec3(0., 0., -2.));
@@ -502,8 +424,7 @@ public:
 
 
         { //GLASS Sphere
-
-            spheres.resize( spheres.size() + 1 );
+            spheres.resize(spheres.size() + 1);
             Sphere & s = spheres[spheres.size() - 1];
             s.m_center = Vec3(1.0, -1.25, 0.5);
             s.m_radius = 0.75f;
@@ -518,7 +439,7 @@ public:
 
 
         { //MIRRORED Sphere
-            spheres.resize( spheres.size() + 1 );
+            spheres.resize(spheres.size() + 1); 
             Sphere & s = spheres[spheres.size() - 1];
             s.m_center = Vec3(-1.0, -1.25, -0.5);
             s.m_radius = 0.75f;
@@ -532,7 +453,7 @@ public:
         }
 
         { // Moon
-            spheres.resize( spheres.size() + 1 );
+            spheres.resize(spheres.size() + 1);
             Sphere & s = spheres[spheres.size() - 1];
             s.m_center = Vec3(-0.75, 0, -0.75);
             s.m_radius = 0.5f;
@@ -578,7 +499,7 @@ public:
             light.isInCamSpace = false;
         }
         { //bottom left
-            squares.resize( squares.size() + 1 );
+            squares.resize(squares.size() + 1);
             Square & s = squares[squares.size() - 1];
             s.setQuad(Vec3(-1., -1., 0.), Vec3(1., 0, 0.), Vec3(0., 1, 0.), 2., 2.);
             s.translate(Vec3(-1., -1., -2.));
@@ -588,7 +509,7 @@ public:
             s.material.shininess = 16;
         }
         { //bottom right
-            squares.resize( squares.size() + 1 );
+            squares.resize(squares.size() + 1);
             Square & s = squares[squares.size() - 1];
             s.setQuad(Vec3(-1., -1., 0.), Vec3(1., 0, 0.), Vec3(0., 1, 0.), 2., 2.);
             s.translate(Vec3(1., -1., -2.));
@@ -598,7 +519,7 @@ public:
             s.material.shininess = 16;
         }
         { //top left
-            squares.resize( squares.size() + 1 );
+            squares.resize(squares.size() + 1);
             Square & s = squares[squares.size() - 1];
             s.setQuad(Vec3(-1., -1., 0.), Vec3(1., 0, 0.), Vec3(0., 1, 0.), 2., 2.);
             s.translate(Vec3(-1., 1, -2.));
@@ -608,7 +529,7 @@ public:
             s.material.shininess = 16;
         }
         { //top right
-            squares.resize( squares.size() + 1 );
+            squares.resize(squares.size() + 1);
             Square & s = squares[squares.size() - 1];
             s.setQuad(Vec3(-1., -1., 0.), Vec3(1., 0, 0.), Vec3(0., 1, 0.), 2., 2.);
             s.translate(Vec3(1, 1, -2.));
@@ -618,7 +539,7 @@ public:
             s.material.shininess = 16;
         }
         { //Ceiling
-            squares.resize( squares.size() + 1 );
+            squares.resize(squares.size() + 1);
             Square & s = squares[squares.size() - 1];
             s.setQuad(Vec3(-1., -1., 0.), Vec3(1., 0, 0.), Vec3(0., 1, 0.), 2., 2.);
             s.translate(Vec3(0., 0., -2.));
@@ -632,8 +553,7 @@ public:
             s.material.type = Material_Checker;
         }
         { //GLASS Sphere
-
-            spheres.resize( spheres.size() + 1 );
+            spheres.resize(spheres.size() + 1);
             Sphere & s = spheres[spheres.size() - 1];
             s.m_center = Vec3(0, 0, 0.5);
             s.m_radius = 0.75f;
@@ -665,7 +585,7 @@ public:
         }
 
         { //Floor
-            squares.resize( squares.size() + 1 );
+            squares.resize(squares.size() + 1);
             Square & s = squares[squares.size() - 1];
             s.setQuad(Vec3(-1., -1., 0.), Vec3(1., 0, 0.), Vec3(0., 1, 0.), 2., 2.);
             s.translate(Vec3(0., 0., -2.));
@@ -678,7 +598,7 @@ public:
         }
 
         { //Back Wall
-            squares.resize( squares.size() + 1 );
+            squares.resize(squares.size() + 1);
             Square & s = squares[squares.size() - 1];
             s.setQuad(Vec3(-1., -1., 0.), Vec3(1., 0, 0.), Vec3(0., 1, 0.), 2., 2.);
             s.scale(Vec3(2., 2., 1.));
@@ -701,7 +621,7 @@ public:
         // }
         {
             meshes.resize( meshes.size() + 1 );
-            Mesh & mesh = meshes[meshes.size() - 1];
+            Mesh & mesh = static_cast<Mesh&>(meshes[meshes.size() - 1]);
             mesh.loadOFF("assets/models/gorilla18_fixed.obj.off");
             mesh.scale(Vec3(0.0125));
             mesh.translate(Vec3{0, -1.05, 0});

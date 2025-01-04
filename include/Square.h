@@ -58,7 +58,7 @@ public:
         triangles[1][2] = 3;
     }
 
-    RaySquareIntersection intersect(const Ray &ray) const {
+    RayIntersection intersect(const Ray &ray) const {
         RaySquareIntersection intersection;
         intersection.intersectionExists = false;
 
@@ -70,7 +70,7 @@ public:
         m_normal.normalize();
 
         // Face culling
-        if(Vec3::dot(ray.direction(), m_normal) > 0) return intersection;
+        if(Vec3::dot(ray.direction(), m_normal) > 0) return RayIntersection();
 
         // Intersection du rayon avec le plan
         float D = Vec3::dot(m_bottom_left, m_normal);
@@ -96,7 +96,18 @@ public:
 
         }
 
-        return intersection;
+        RayIntersection result;
+        result.intersectionExists = intersection.intersectionExists;
+        result.t = intersection.t;
+        result.intersection = intersection.intersection;
+        result.normal = intersection.normal;
+        result.position = ray.origin() + ray.direction() * intersection.t;
+        result.u = intersection.u;
+        result.v = intersection.v;
+        result.material = material;
+
+        return result;
     }
+    
 };
 #endif // SQUARE_H

@@ -82,7 +82,7 @@ public:
     }
 
 
-    RaySphereIntersection intersect(const Ray &ray) const {
+    RayIntersection intersect(const Ray &ray) const {
         RaySphereIntersection intersection;
         intersection.intersectionExists = false;
 
@@ -106,8 +106,7 @@ public:
             } else if (t2 > 0) {
                 t = t2;
             } else {
-                intersection.intersectionExists = false; // Les deux intersections sont derrière le rayon
-                return intersection;
+                return RayIntersection(); // Les deux intersections sont derrière le rayon
             }
         } else if (discriminant == 0){
             t = -b / (2. * a);
@@ -119,7 +118,7 @@ public:
             
             intersection.normal = intersection.intersection - m_center;
             intersection.normal.normalize();
-            if(Vec3::dot(ray.direction(), intersection.normal) > 0.) return intersection;
+            if(Vec3::dot(ray.direction(), intersection.normal) > 0.) return RayIntersection();
 
             intersection.intersectionExists = true;
 
@@ -128,7 +127,21 @@ public:
             intersection.phi = spherical[1];
         }
 
-        return intersection;
+        RayIntersection result;
+        result.intersectionExists = intersection.intersectionExists;
+        result.t = intersection.t;
+        result.intersection = intersection.intersection;
+        result.normal = intersection.normal;
+        result.position = ray.origin() + ray.direction() * intersection.t;
+        result.material = material;
+
+        // https://en.wikipedia.org/wiki/UV_mapping
+        Vec3 direction = ray.direction();
+        result.u = 0.5 + (std::atan2(direction[2], direction[0]) / (2. * M_PI));
+        result.v = 0.5 + (std::asin(direction[1]) /  M_PI);
+
+
+        return result;
     }
 };
 #endif

@@ -80,7 +80,10 @@ void Mesh::draw() const {
     glVertexPointer (3, GL_FLOAT, 3*sizeof (float) , (GLvoid*)(positions_array.data()));
     glDrawElements(GL_TRIANGLES, triangles_array.size(), GL_UNSIGNED_INT, (GLvoid*)(triangles_array.data()));
 
-    
+}
+
+void RayTraceMesh::draw() const {
+    Mesh::draw();
     if(vertices.size() > 4){
         std::vector<AABB> aabbs;
         triangleTree->getAABBs(aabbs);
@@ -89,12 +92,9 @@ void Mesh::draw() const {
             drawAABB(box);
         }
     }
-
-    // drawAABB(boundingBox);
-
 }
 
-void Mesh::drawAABB(const AABB& box) const{
+void RayTraceMesh::drawAABB(const AABB& box) const{
     GLfloat color[4] = {1.0f, 0.08f, 0.58f, 1.0f};
 
     glMaterialfv(GL_FRONT_AND_BACK, GL_SPECULAR, color);
@@ -124,8 +124,7 @@ void Mesh::drawAABB(const AABB& box) const{
     glEnd();
 }
 
-
-RayTriangleIntersection Mesh::intersect( Ray const & ray ) const {
+RayIntersection RayTraceMesh::intersect( Ray const & ray ) const {
     RayTriangleIntersection closestIntersection;
     closestIntersection.t = FLT_MAX;
     closestIntersection.intersectionExists = false;
@@ -153,16 +152,25 @@ RayTriangleIntersection Mesh::intersect( Ray const & ray ) const {
         }
     }
 
-    return closestIntersection;
+    RayIntersection result;
+    result.intersectionExists = closestIntersection.intersectionExists;
+    result.t = closestIntersection.t;
+    result.intersection = closestIntersection.intersection;
+    result.normal = closestIntersection.normal;
+    result.position = ray.origin() + ray.direction() * closestIntersection.t;
+    result.material = material;
+    result.u = closestIntersection.w0;
+    result.v = closestIntersection.w1;
+
+
+    return result;
 }
 
 
 
 
 
-
-
-void Mesh::buildTree(unsigned int nb_of_subdivide_tree){
+void RayTraceMesh::buildTree(unsigned int nb_of_subdivide_tree){
     std::vector<Vec3> verticesPositions;
     Vec3 min, max;
     min = vertices[0].position;
