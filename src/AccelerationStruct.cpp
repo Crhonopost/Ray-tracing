@@ -283,10 +283,9 @@ std::vector<size_t> BVH_Node::intersect(const Ray & ray, AABB parentBox) const{
 }
 
 // intersection with bMeshes to give a RayIntersection
-RayIntersection BVH_Node::intersectObjects(const Ray & ray, int& totalObjects, float lightDistance, bool stopAtFirst) const{
+RayIntersection BVH_Node::intersectObjects(const Ray & ray, float lightDistance, bool stopAtFirst) const{
     if (leaf) {
         RayIntersection result;
-        totalObjects += meshes.size();
         for(auto& obj: meshes){
             if(obj.type == 0){
                 Square* square = static_cast<Square*>(obj.ref);
@@ -320,14 +319,14 @@ RayIntersection BVH_Node::intersectObjects(const Ray & ray, int& totalObjects, f
         auto [hitR, tR] = AABB::intersect(ray, rightBox);
 
         if (hitL && !hitR) {
-            return l_child->intersectObjects(ray, totalObjects, lightDistance, stopAtFirst);
+            return l_child->intersectObjects(ray, lightDistance, stopAtFirst);
         } else if (hitR && !hitL) {
-            return r_child->intersectObjects(ray, totalObjects, lightDistance, stopAtFirst);
+            return r_child->intersectObjects(ray, lightDistance, stopAtFirst);
         } else if (hitR && hitL) {
-            RayIntersection leftIntersection = l_child->intersectObjects(ray, totalObjects, lightDistance, stopAtFirst);
+            RayIntersection leftIntersection = l_child->intersectObjects(ray, lightDistance, stopAtFirst);
             if (stopAtFirst && leftIntersection.intersectionExists) {return leftIntersection;}
             
-            RayIntersection rightIntersection = r_child->intersectObjects(ray, totalObjects, lightDistance, stopAtFirst);
+            RayIntersection rightIntersection = r_child->intersectObjects(ray, lightDistance, stopAtFirst);
             if (stopAtFirst && rightIntersection.intersectionExists) {return rightIntersection;}
             
 

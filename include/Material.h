@@ -5,6 +5,7 @@
 #include "Vec3.h"
 #include <cmath>
 #include <GL/glut.h>
+#include "stb_image.h"
 
 enum MaterialType {
     Material_Diffuse_Blinn_Phong ,
@@ -20,8 +21,10 @@ struct Material {
     Vec3 specular_material;
     double shininess;
 
-    ppmLoader::ImageRGB texture;
-    ppmLoader::ImageRGB normalMap;
+    unsigned char* textureData;
+    unsigned char* normalMapData;
+    int textureWidth, textureHeight, textureChannels;
+    int normalMapWidth, normalMapHeight, normalMapChannels;
 
     bool hasTexture = false;
     bool hasNormalMap = false;
@@ -39,7 +42,20 @@ struct Material {
         transparency = 0.0;
         index_medium = 1.0;
         ambient_material = Vec3(0., 0., 0.);
+        textureData = nullptr;
+        normalMapData = nullptr;
     }
+
+    // ~Material() {
+    //     if (hasTexture && textureData) {
+    //         stbi_image_free(textureData);
+    //         textureData = nullptr;
+    //     }
+    //     if (hasNormalMap && normalMapData) {
+    //         stbi_image_free(normalMapData);
+    //         normalMapData = nullptr;
+    //     }
+    // }
 
     static Vec3 reflect(Vec3 direction, Vec3 normal){
         Vec3 parallel = Vec3::dot(-1. * direction, normal) * normal - (-1. * direction);
@@ -67,21 +83,41 @@ struct Material {
         return r0 + (1-r0)*std::pow((1 - cosine),5);
     }
 
-    Vec3 getPixelAt(double u, double v, ppmLoader::ImageRGB & texture){
-        int pixelU = (int) (u * (double) texture.w * materialScale);
-        int pixelV = (int) (v * (double) texture.h * materialScale);
+    Vec3 getColorAt(double u, double v) {
+        if (!hasTexture) return Vec3(1.0, 1.0, 1.0);
 
-        pixelU = pixelU % texture.w;
-        pixelV = pixelV % texture.h;
+        int pixelU = (int)(u * textureWidth * materialScale) % textureWidth;
+        int pixelV = (int)(v * textureHeight * materialScale) % textureHeight;
 
-        ppmLoader::RGB rgb = texture.data[pixelV * texture.w + pixelU];
+        int index = (pixelV * textureWidth + pixelU) * textureChannels;
+        return Vec3(textureData[index] / 255.0, textureData[index + 1] / 255.0, textureData[index + 2] / 255.0);
+    }
+    
+    Vec3 getNormalAt(double u, double v) {
+        if (!hasNormalMap) return Vec3(0.0, 0.0, 1.0);
 
-        return Vec3(rgb.r, rgb.g, rgb.b) / 255.;
+        int pixelU = (int)(u * normalMapWidth * materialScale) % normalMapWidth;
+        int pixelV = (int)(v * normalMapHeight * materialScale) % normalMapHeight;
+
+        int index = (pixelV * normalMapWidth + pixelU) * normalMapChannels;
+        return Vec3(normalMapData[index] / 255.0, normalMapData[index + 1] / 255.0, normalMapData[index + 2] / 255.0);
     }
 
-    Vec3 getColorAt(double u, double v){
-        return getPixelAt(u, v, texture);
-    }
+    // Vec3 getPixelAt(double u, double v, ppmLoader::ImageRGB & texture){
+    //     int pixelU = (int) (u * (double) texture.w * materialScale);
+    //     int pixelV = (int) (v * (double) texture.h * materialScale);
+
+    //     pixelU = pixelU % texture.w;
+    //     pixelV = pixelV % texture.h;
+
+    //     ppmLoader::RGB rgb = texture.data[pixelV * texture.w + pixelU];
+
+    //     return Vec3(rgb.r, rgb.g, rgb.b) / 255.;
+    // }
+
+    // Vec3 getColorAt(double u, double v){
+    //     return getPixelAt(u, v, texture);
+    // }
 
     Vec3 applyTBN(const Vec3 & normal, double u, double v){
         Vec3 normalFromMap = getNormalAt(u, v);
@@ -92,12 +128,17 @@ struct Material {
                         tangent[2], bitangent[2], normal[2]);
         return TBN * normalFromMap;
     }
-private:
-    Vec3 getNormalAt(double u, double v){
-        Vec3 normal = getPixelAt(u, v, normalMap);
-        normal = 2. * normal - Vec3(1.);
-        normal.normalize();
-        return normal;
+
+    bool loadTexture(const std::string& filename) {
+        textureData = stbi_load(filename.c_str(), &textureWidth, &textureHeight, &textureChannels, 0);
+        hasTexture = (textureData != nullptr);
+        return hasTexture;
+    }
+
+    bool loadNormalMap(const std::string& filename) {
+        normalMapData = stbi_load(filename.c_str(), &normalMapWidth, &normalMapHeight, &normalMapChannels, 0);
+        hasNormalMap = (normalMapData != nullptr);
+        return hasNormalMap;
     }
 };
 

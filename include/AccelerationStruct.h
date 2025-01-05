@@ -137,7 +137,7 @@ struct BVH_Node {
 
     std::vector<size_t> intersect(const Ray & ray, AABB parentBox) const;
 
-    RayIntersection intersectObjects(const Ray & ray, int& totalObjects, float lightDistance = 0, bool stopAtFirst = false) const;
+    RayIntersection intersectObjects(const Ray & ray, float lightDistance = 0, bool stopAtFirst = false) const;
 
     void draw() const;
 };

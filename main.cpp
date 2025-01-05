@@ -31,6 +31,9 @@
 #include <GL/glut.h>
 #include "include/ThreadPool.h"
 
+#define STB_IMAGE_IMPLEMENTATION
+#include "include/stb_image.h"
+
 #include "include/matrixUtilities.h"
 
 using namespace std;
@@ -197,9 +200,10 @@ void ray_trace_from_camera() {
         }
     }
 
-    std::vector< Vec3 > image( w*h , Vec3(0,0,0) );
+    std::vector< Vec3 > image( w*h );
     unsigned int nbThreads = std::thread::hardware_concurrency() * maxThreadPercentage;
-    ThreadPool pool(nbThreads);
+    // ThreadPool pool(nbThreads);
+    ThreadPool pool(1);
     std::atomic<int> completedTasks(0);
 
     {    

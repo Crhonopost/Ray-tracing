@@ -127,6 +127,7 @@ RayIntersection RayTraceMesh::intersect( Ray const & ray ) const {
     result.t = closestIntersection.t;
     result.intersection = closestIntersection.intersection;
     result.normal = closestIntersection.normal;
+    result.normal.normalize();
     result.position = ray.origin() + ray.direction() * closestIntersection.t;
     result.material = material;
     result.u = closestIntersection.w0;
