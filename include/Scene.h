@@ -181,29 +181,31 @@ public:
 
         if(raySceneIntersection.intersectionExists){
             Vec3 intersectionPosition, intersectionNormal, intersectionUV;
-            Material material;
 
             intersectionPosition = raySceneIntersection.position;
             intersectionNormal = raySceneIntersection.normal;
             intersectionUV = Vec3(raySceneIntersection.u, raySceneIntersection.v, 0);
-            material = raySceneIntersection.material;
+            Material &material = raySceneIntersection.material;
 
-            if(material.type == MATERIAL_TEXTURE){
-                ScopedLogger logger("Texture material");
-                color = material.getPixelAt(intersectionUV[0], intersectionUV[1]);
+            if(material.hasNormalMap){
+                Vec3 normal = material.applyTBN(intersectionNormal, intersectionUV[0], intersectionUV[1]);
+                intersectionNormal = normal;
+            }
+            if(material.hasTexture){
+                // ScopedLogger logger("Texture material");
+                color = material.getColorAt(intersectionUV[0], intersectionUV[1]);
                 material.diffuse_material = color;
                 material.specular_material = color;
                 material.ambient_material = color;
             } else if(material.type == Material_Checker){
-                ScopedLogger logger("Checker material");
+                // ScopedLogger logger("Checker material");
                 color = checkerTexture.getPixelAt(intersectionUV[0], intersectionUV[1], intersectionPosition);
                 material.diffuse_material = color;
                 material.specular_material = color;
                 material.ambient_material = color;
             }
             
-            if( material.type == Material_Diffuse_Blinn_Phong || 
-                material.type == MATERIAL_TEXTURE || 
+            if( material.type == Material_Diffuse_Blinn_Phong ||  
                 material.type == Material_Checker ||
                 NRemainingBounces <= 0){
                 ScopedLogger logger("Diffuse material");
@@ -226,7 +228,7 @@ public:
                 ScopedLogger logger("Mirror material");
                 Vec3 newDirection = Material::reflect(ray.direction(), intersectionNormal);
                 Ray newRay = Ray(intersectionPosition + intersectionNormal*0.001, newDirection);
-                color = Vec3::compProduct(material.specular_material, rayTraceRecursive(newRay, NRemainingBounces-1));
+                color = Vec3::compProduct(material.specular_material, rayTraceRecursive(newRay, NRemainingBounces-1)) * material.reflectivity;
             } else if(material.type == Material_Glass) {
                 ScopedLogger logger("Glass material");
 
@@ -237,19 +239,34 @@ public:
                 float refractionIndex = isInside ? material.index_medium : 1. / material.index_medium;
                 double reflectance = Material::reflectance(cosTheta, refractionIndex); 
                 
-                Ray newRay;
-                if(refractionIndex * sinTheta > 1.0){// || reflectance > std::rand() / (RAND_MAX + 1.0)){
-                    Vec3 newDirection = Material::reflect(ray.direction(), intersectionNormal);
-                    newRay = Ray(intersectionPosition + intersectionNormal*0.001, newDirection);
-                }else{
+                Ray reflectedRay, refractedRay;
+                Vec3 reflectedColor, refractedColor;
+
+                // Calculate reflected ray
+                Vec3 reflectedDirection = Material::reflect(ray.direction(), intersectionNormal);
+                reflectedRay = Ray(intersectionPosition + intersectionNormal * 0.001, reflectedDirection);
+                reflectedColor = rayTraceRecursive(reflectedRay, NRemainingBounces - 1);
+
+                // Calculate refracted ray
+                if (refractionIndex * sinTheta > 1.0) {
+                    refractedColor = Vec3(0); // Total internal reflection
+                } else {
                     double offsetDir = isInside ? 0.00001 : -0.00001;
-                    Vec3 newDirection = Material::refract(ray.direction(), intersectionNormal, refractionIndex, cosTheta);
-                    newRay = Ray(intersectionPosition + (offsetDir * intersectionNormal), newDirection);            
+                    Vec3 refractedDirection = Material::refract(ray.direction(), intersectionNormal, refractionIndex, cosTheta);
+                    refractedRay = Ray(intersectionPosition + (offsetDir * intersectionNormal), refractedDirection);
+                    refractedColor = rayTraceRecursive(refractedRay, NRemainingBounces - 1);
                 }
-                
-                color = rayTraceRecursive(newRay, NRemainingBounces-1);
+
+                // Blend reflected and refracted colors based on reflectance
+                color = reflectance * reflectedColor + (1.0 - reflectance) * refractedColor;
+                color = (1.0 - material.transparency) * color + material.transparency * refractedColor;
             }
 
+        } else {
+            // set color to be a skybox like inside a sphere
+            Vec3 direction = ray.direction();
+            float t = 0.5 * (direction[1] + 1.0);
+            color = (1.0 - t) * Vec3(1.0) + t * Vec3(0.5, 0.7, 1.0);
         }
         return color;
     }
@@ -298,8 +315,8 @@ public:
             s.material.diffuse_material = Vec3( 0.5,0.,0.5 );
             s.material.specular_material = Vec3( 0.5,0.,0.5 );
             s.material.shininess = 16;
-            // s.material.type = MATERIAL_TEXTURE;
             // ppmLoader::load_ppm(s.material.texture, "assets/img/sphereTextures/s4.ppm");
+            // s.material.hasTexture = true;
         }
 
         { //Left Wall
@@ -395,6 +412,7 @@ public:
             s.material.shininess = 16;
             s.material.transparency = 0.;
             s.material.index_medium = 0.;
+            s.material.reflectivity = 0.9;
         }
 
         { // Moon
@@ -508,8 +526,55 @@ public:
             s.material.diffuse_material = Vec3( 1.,0.,0. );
             s.material.specular_material = Vec3( 1.,0.,0. );
             s.material.shininess = 16;
+            s.material.transparency = 0.5;
+            s.material.index_medium = 1.4;
+        }
+        sceneBvh =BVH_Node::buildBVH(squares, spheres, meshes);
+    }
+
+    void setup_reflexion_scene(){
+        meshes.clear();
+        spheres.clear();
+        squares.clear();
+        lights.clear();
+
+        {
+            lights.resize( lights.size() + 1 );
+            Light & light = lights[lights.size() - 1];
+            light.pos = Vec3( 0.0, 3.5, 0.0 );
+            light.radius = .5f;
+            light.powerCorrection = 2.f;
+            light.type = LightType_Spherical;
+            light.material = Vec3(1,1,1);
+            light.isInCamSpace = false;
+        }
+        { //Ceiling
+            squares.resize(squares.size() + 1);
+            Square & s = squares[squares.size() - 1];
+            s.setQuad(Vec3(-1., -1., 0.), Vec3(1., 0, 0.), Vec3(0., 1, 0.), 2., 2.);
+            s.translate(Vec3(0., 0., -2.));
+            s.scale(Vec3(80., 80., 1.));
+            s.rotate_x(-90);
+            s.build_arrays();
+            s.material.diffuse_material = Vec3( 0.75,1.,0.75 );
+            s.material.specular_material = Vec3( 0.75,1.,0.75 );
+            s.material.shininess = 16;
+
+            s.material.type = Material_Checker;
+        }
+        { //MIRROR Sphere
+            spheres.resize(spheres.size() + 1);
+            Sphere & s = spheres[spheres.size() - 1];
+            s.m_center = Vec3(0, -1.25, 0.5);
+            s.m_radius = 0.75f;
+            s.build_arrays();
+            s.material.type = Material_Mirror;
+            s.material.diffuse_material = Vec3( 0.75,1.,1. );
+            s.material.specular_material = Vec3( 0.75,1.,1. );
+            s.material.shininess = 16;
             s.material.transparency = 1.0;
             s.material.index_medium = 1.4;
+            s.material.reflectivity = 0.5;
         }
         sceneBvh =BVH_Node::buildBVH(squares, spheres, meshes);
     }
@@ -636,8 +701,9 @@ public:
             s.material.diffuse_material = Vec3( 1 );
             s.material.specular_material = Vec3( 1 );
             s.material.shininess = 8;
-            // s.material.type = MATERIAL_TEXTURE;
-            // ppmLoader::load_ppm(s.material.texture, "assets/img/sphereTextures/s4.ppm");
+            ppmLoader::load_ppm(s.material.normalMap, "assets/img/normalMaps/n4.ppm");
+            s.material.hasNormalMap = true;
+            s.material.materialScale = 4;
         }
 
         { //Left Wall
@@ -651,6 +717,8 @@ public:
             s.material.diffuse_material = Vec3( 1.,0.,0. );
             s.material.specular_material = Vec3( 1.,0.,0. );
             s.material.shininess = 16;
+            ppmLoader::load_ppm(s.material.normalMap, "assets/img/normalMaps/n1.ppm");
+            s.material.hasNormalMap = true;
         }
 
         { //Right Wall
@@ -742,12 +810,14 @@ public:
             mesh.scale(Vec3(0.0125));
             mesh.translate(Vec3{0, -1.05, 0});
             mesh.build_arrays();
-            mesh.material.type = Material_Glass;
+            // mesh.material.type = Material_Glass;
             mesh.material.diffuse_material = Vec3( 1.,1.,1. );
             mesh.material.specular_material = Vec3( 1.,1.,1. );
             mesh.material.shininess = 16;
             mesh.material.transparency = 1.0;
             mesh.material.index_medium = 1.2;
+            mesh.material.hasTexture = true;
+            ppmLoader::load_ppm(mesh.material.texture, "assets/img/sphereTextures/s4.ppm");
         }
 
         sceneBvh =BVH_Node::buildBVH(squares, spheres, meshes);

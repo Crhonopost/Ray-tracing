@@ -10,7 +10,6 @@ enum MaterialType {
     Material_Diffuse_Blinn_Phong ,
     Material_Glass,
     Material_Mirror,
-    MATERIAL_TEXTURE,
     Material_Checker
 };
 
@@ -22,9 +21,16 @@ struct Material {
     double shininess;
 
     ppmLoader::ImageRGB texture;
+    ppmLoader::ImageRGB normalMap;
+
+    bool hasTexture = false;
+    bool hasNormalMap = false;
+    double materialScale = 1.;
 
     float index_medium;
     float transparency;
+
+    float reflectivity = 0.0f;
 
     MaterialType type;
 
@@ -60,13 +66,37 @@ struct Material {
         return r0 + (1-r0)*std::pow((1 - cosine),5);
     }
 
-    Vec3 getPixelAt(double u, double v){
-        int pixelU = (int) (u * (double) texture.w);
-        int pixelV = (int) (v * (double) texture.h);
-        
+    Vec3 getPixelAt(double u, double v, ppmLoader::ImageRGB & texture){
+        int pixelU = (int) (u * (double) texture.w * materialScale);
+        int pixelV = (int) (v * (double) texture.h * materialScale);
+
+        pixelU = pixelU % texture.w;
+        pixelV = pixelV % texture.h;
+
         ppmLoader::RGB rgb = texture.data[pixelV * texture.w + pixelU];
 
         return Vec3(rgb.r, rgb.g, rgb.b) / 255.;
+    }
+
+    Vec3 getColorAt(double u, double v){
+        return getPixelAt(u, v, texture);
+    }
+
+    Vec3 applyTBN(const Vec3 & normal, double u, double v){
+        Vec3 normalFromMap = getNormalAt(u, v);
+        Vec3 tangent = Vec3(1., 0., 0.);
+        Vec3 bitangent = Vec3::cross(normal, tangent);
+        Mat3 TBN = Mat3(tangent[0], bitangent[0], normal[0],
+                        tangent[1], bitangent[1], normal[1],
+                        tangent[2], bitangent[2], normal[2]);
+        return TBN * normalFromMap;
+    }
+private:
+    Vec3 getNormalAt(double u, double v){
+        Vec3 normal = getPixelAt(u, v, normalMap);
+        normal = 2. * normal - Vec3(1.);
+        normal.normalize();
+        return normal;
     }
 };
 
