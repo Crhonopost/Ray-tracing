@@ -22,6 +22,7 @@
 #include <cstdio>
 #include <cstdlib>
 #include <chrono>
+#include <atomic>
 
 #include <algorithm>
 #include "include/Vec3.h"
@@ -199,6 +200,7 @@ void ray_trace_from_camera() {
     std::vector< Vec3 > image( w*h , Vec3(0,0,0) );
     unsigned int nbThreads = std::thread::hardware_concurrency() * maxThreadPercentage;
     ThreadPool pool(nbThreads);
+    std::atomic<int> completedTasks(0);
 
     {    
         for (int y = 0; y < h; ++y) {
@@ -212,14 +214,25 @@ void ray_trace_from_camera() {
                     }
                     pixel_color /= nsamples;
                     image[x + y * w] = pixel_color;
+
+                    completedTasks++;
                 });
             }
         }
     }
 
-    while(!pool.finished()) {
+    int totalTasks = w * h;
+
+    while (!pool.finished()) {
         std::this_thread::sleep_for(std::chrono::milliseconds(100));
+
+        int completed = completedTasks.load();
+        float progress = (float)completed / totalTasks * 100.0f;
+        std::cout << "\rProgress: " << progress << "%" << std::flush;
     }
+
+    std::cout << std::endl;
+
     
     const auto stopTime = std::chrono::high_resolution_clock::now();
     const auto duration = std::chrono::duration_cast<std::chrono::seconds>(stopTime - startTime);

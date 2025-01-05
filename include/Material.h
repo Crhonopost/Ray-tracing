@@ -59,6 +59,7 @@ struct Material {
         return outDirection;
     }
     
+    // TODO: source ?
     static double reflectance(double cosine, double refraction_index) {
         // Use Schlick's approximation for reflectance.
         auto r0 = (1 - refraction_index) / (1 + refraction_index);

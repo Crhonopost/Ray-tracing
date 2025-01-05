@@ -23,8 +23,8 @@ BUILDDIR = ./build
 CC = g++
 CPP = g++
 
-CFLAGS = -g -Wall -O3
-CXXFLAGS = -g -Wall -O3
+CFLAGS = -g -Wall -O0
+CXXFLAGS = -g -Wall -O0
 
 
 # option du preprocesseur

@@ -214,8 +214,8 @@ public:
                 float averageShadowStrength = 0.;
                 for(Light &light: lights){
                     // shadow casting
-                    float shadowStrength = sampleSphereLight(intersectionPosition, light.pos, light.radius, 15);
-                    // float shadowStrength = isInShadow(intersectionPosition, light.pos);
+                    // float shadowStrength = sampleSphereLight(intersectionPosition, light.pos, light.radius, 15);
+                    float shadowStrength = isInShadow(intersectionPosition, light.pos);
                     // float shadowStrength = 0.;
                     averageShadowStrength += shadowStrength;
 
@@ -260,10 +260,17 @@ public:
                 // Blend reflected and refracted colors based on reflectance
                 color = reflectance * reflectedColor + (1.0 - reflectance) * refractedColor;
                 color = (1.0 - material.transparency) * color + material.transparency * refractedColor;
+                
+
+                Vec3 absorb = (Vec3(1) - material.diffuse_material) * -raySceneIntersection.t;
+                for(int i = 0; i < 3; i++){
+                    absorb[i] = std::exp(absorb[i]);
+                }
+
+                color = Vec3::compProduct(color, absorb);  
             }
 
         } else {
-            // set color to be a skybox like inside a sphere
             Vec3 direction = ray.direction();
             float t = 0.5 * (direction[1] + 1.0);
             color = (1.0 - t) * Vec3(1.0) + t * Vec3(0.5, 0.7, 1.0);
@@ -526,7 +533,7 @@ public:
             s.material.diffuse_material = Vec3( 1.,0.,0. );
             s.material.specular_material = Vec3( 1.,0.,0. );
             s.material.shininess = 16;
-            s.material.transparency = 0.5;
+            s.material.transparency = 0.25;
             s.material.index_medium = 1.4;
         }
         sceneBvh =BVH_Node::buildBVH(squares, spheres, meshes);
