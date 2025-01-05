@@ -109,7 +109,7 @@ void init () {
     glEnable (GL_DEPTH_TEST);
     glClearColor (0.2f, 0.2f, 0.3f, 1.0f);
 
-    settings.tree_subdivide = 3;
+    settings.tree_subdivide = 12;
 }
 
 
@@ -367,12 +367,13 @@ int main (int argc, char ** argv) {
 
     camera.move(0., 0., -3.1);
     selected_scene=0;
-    scenes.resize(5);
-    scenes[0].setup_cornell_box();
+    scenes.resize(4);
+    scenes[0].setup_final_scene();
     scenes[1].setup_refraction_scene();
     scenes[2].setup_test_scene();
-    scenes[3].setup_single_sphere();
-    scenes[4].setup_single_square();
+    scenes[3].setup_cornell_box();
+
+    scenes[selected_scene].applySettings(settings);
 
     glutMainLoop ();
     return EXIT_SUCCESS;

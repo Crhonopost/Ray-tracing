@@ -177,7 +177,7 @@ public:
     Vec3 rayTraceRecursive( Ray ray , int NRemainingBounces ) {
         RayIntersection raySceneIntersection = computeIntersection(ray);
         Vec3 color = Vec3{0.1, 0.2, 0.3};
-        Light &light = lights[0];
+
 
         if(raySceneIntersection.intersectionExists){
             Vec3 intersectionPosition, intersectionNormal, intersectionUV;
@@ -190,21 +190,43 @@ public:
 
             if(material.type == MATERIAL_TEXTURE){
                 ScopedLogger logger("Texture material");
-                color = material.getPixelAt(intersectionUV[0], intersectionUV[1]);;
-            } else if(material.type == Material_Diffuse_Blinn_Phong || NRemainingBounces<=0){
+                color = material.getPixelAt(intersectionUV[0], intersectionUV[1]);
+                material.diffuse_material = color;
+                material.specular_material = color;
+                material.ambient_material = color;
+            } else if(material.type == Material_Checker){
+                ScopedLogger logger("Checker material");
+                color = checkerTexture.getPixelAt(intersectionUV[0], intersectionUV[1], intersectionPosition);
+                material.diffuse_material = color;
+                material.specular_material = color;
+                material.ambient_material = color;
+            }
+            
+            if( material.type == Material_Diffuse_Blinn_Phong || 
+                material.type == MATERIAL_TEXTURE || 
+                material.type == Material_Checker ||
+                NRemainingBounces <= 0){
                 ScopedLogger logger("Diffuse material");
-                color = phong(light.material, light.pos, intersectionPosition, intersectionNormal, -1 * ray.direction(), material);
+                color = Vec3(0);
+ 
+                float averageShadowStrength = 0.;
+                for(Light &light: lights){
+                    // shadow casting
+                    float shadowStrength = sampleSphereLight(intersectionPosition, light.pos, light.radius, 15);
+                    // float shadowStrength = isInShadow(intersectionPosition, light.pos);
+                    // float shadowStrength = 0.;
+                    averageShadowStrength += shadowStrength;
+
+                    color += phong(light.material, light.pos, intersectionPosition, intersectionNormal, -1 * ray.direction(), material);
+                }
+
+                color *= (1. - averageShadowStrength / lights.size());
+
             } else if(material.type == Material_Mirror) {
                 ScopedLogger logger("Mirror material");
                 Vec3 newDirection = Material::reflect(ray.direction(), intersectionNormal);
                 Ray newRay = Ray(intersectionPosition + intersectionNormal*0.001, newDirection);
                 color = Vec3::compProduct(material.specular_material, rayTraceRecursive(newRay, NRemainingBounces-1));
-            } else if(material.type == MATERIAL_TEXTURE){
-                ScopedLogger logger("Texture material");
-                color = material.getPixelAt(intersectionUV[0], intersectionUV[1]);
-            } else if(material.type == Material_Checker){
-                ScopedLogger logger("Checker material");
-                color = checkerTexture.getPixelAt(intersectionUV[0], intersectionUV[1], intersectionPosition);
             } else if(material.type == Material_Glass) {
                 ScopedLogger logger("Glass material");
 
@@ -228,15 +250,6 @@ public:
                 color = rayTraceRecursive(newRay, NRemainingBounces-1);
             }
 
-            {
-                ScopedLogger logger("Shadow");
-                // shadow casting
-                float shadowStrength = sampleSphereLight(intersectionPosition, light.pos, light.radius, 15);
-                // float shadowStrength = isInShadow(intersectionPosition, light.pos);
-                // float shadowStrength = 0.;
-                color *= (1. - (shadowStrength * shadowStrength));
-            }
-
         }
         return color;
     }
@@ -245,65 +258,6 @@ public:
     Vec3 rayTrace( Ray const & rayStart ) {
         Vec3 color = rayTraceRecursive(rayStart, 4);
         return color;
-    }
-
-    void setup_single_sphere() {
-        meshes.clear();
-        spheres.clear();
-        squares.clear();
-        lights.clear();
-
-        {
-            lights.resize( lights.size() + 1 );
-            Light & light = lights[lights.size() - 1];
-            light.pos = Vec3(-5,5,5);
-            light.radius = 2.5f;
-            light.powerCorrection = 2.f;
-            light.type = LightType_Spherical;
-            light.material = Vec3(1,1,1);
-            light.isInCamSpace = false;
-        }
-        {
-            spheres.resize( spheres.size() + 1 );
-            Sphere & s = spheres[spheres.size() - 1];
-            s.build_arrays();
-            s.material.type = Material_Mirror;
-            s.material.diffuse_material = Vec3( 1.,1.,1 );
-            s.material.specular_material = Vec3( 0.2,0.2,0.2 );
-            s.material.shininess = 20;
-        }
-
-        sceneBvh =BVH_Node::buildBVH(squares, spheres, meshes);
-    }
-
-    void setup_single_square() {
-        meshes.clear();
-        spheres.clear();
-        squares.clear();
-        lights.clear();
-
-        {
-            lights.resize( lights.size() + 1 );
-            Light & light = lights[lights.size() - 1];
-            light.pos = Vec3(-5,5,5);
-            light.radius = 2.5f;
-            light.powerCorrection = 2.f;
-            light.type = LightType_Spherical;
-            light.material = Vec3(1,1,1);
-            light.isInCamSpace = false;
-        }
-
-        {
-            squares.resize( squares.size() + 1 );
-            Square & s = squares[squares.size() - 1];
-            s.setQuad(Vec3(-1., -1., 0.), Vec3(1., 0, 0.), Vec3(0., 1, 0.), 2., 2.);
-            s.build_arrays();
-            s.material.diffuse_material = Vec3( 0.8,0.8,0.8 );
-            s.material.specular_material = Vec3( 0.8,0.8,0.8 );
-            s.material.shininess = 20;
-        }
-
-        sceneBvh =BVH_Node::buildBVH(squares, spheres, meshes);
     }
 
     void setup_cornell_box(){
@@ -320,6 +274,17 @@ public:
             light.powerCorrection = 2.f;
             light.type = LightType_Spherical;
             light.material = Vec3(1,1,1);
+            light.isInCamSpace = false;
+        }
+
+        {
+            lights.resize( lights.size() + 1 );
+            Light & light = lights[lights.size() - 1];
+            light.pos = Vec3( -1.5, -0.75, 1.25 );
+            light.radius = .5f;
+            light.powerCorrection = 2.f;
+            light.type = LightType_Spherical;
+            light.material = Vec3(1,0.5,1);
             light.isInCamSpace = false;
         }
 
@@ -630,6 +595,161 @@ public:
         //     mesh.material.transparency = 1.0;
         //     mesh.material.index_medium = 1.4;
         // }
+        sceneBvh =BVH_Node::buildBVH(squares, spheres, meshes);
+    }
+
+    void setup_final_scene(){
+        meshes.clear();
+        spheres.clear();
+        squares.clear();
+        lights.clear();
+
+        // {
+        //     lights.resize( lights.size() + 1 );
+        //     Light & light = lights[lights.size() - 1];
+        //     light.pos = Vec3( 0.0, 1.5, 0.0 );
+        //     light.radius = .5f;
+        //     light.powerCorrection = 2.f;
+        //     light.type = LightType_Spherical;
+        //     light.material = Vec3(1,1,1);
+        //     light.isInCamSpace = false;
+        // }
+
+        {
+            lights.resize( lights.size() + 1 );
+            Light & light = lights[lights.size() - 1];
+            light.pos = Vec3( -1.5, -0.75, 1.25 );
+            light.radius = .5f;
+            light.powerCorrection = 2.f;
+            light.type = LightType_Spherical;
+            light.material = Vec3(1,0.5,0.75);
+            light.isInCamSpace = false;
+        }
+
+        { //Back Wall
+            squares.resize(squares.size() + 1);
+            Square & s = squares[squares.size() - 1];
+            s.setQuad(Vec3(-1., -1., 0.), Vec3(1., 0, 0.), Vec3(0., 1, 0.), 2., 2.);
+            s.scale(Vec3(2., 2., 1.));
+            s.translate(Vec3(0., 0., -2.));
+            s.build_arrays();
+            s.material.diffuse_material = Vec3( 1 );
+            s.material.specular_material = Vec3( 1 );
+            s.material.shininess = 8;
+            // s.material.type = MATERIAL_TEXTURE;
+            // ppmLoader::load_ppm(s.material.texture, "assets/img/sphereTextures/s4.ppm");
+        }
+
+        { //Left Wall
+            squares.resize(squares.size() + 1);
+            Square & s = squares[squares.size() - 1];
+            s.setQuad(Vec3(-1., -1., 0.), Vec3(1., 0, 0.), Vec3(0., 1, 0.), 2., 2.);
+            s.scale(Vec3(2., 2., 1.));
+            s.translate(Vec3(0., 0., -2.));
+            s.rotate_y(90);
+            s.build_arrays();
+            s.material.diffuse_material = Vec3( 1.,0.,0. );
+            s.material.specular_material = Vec3( 1.,0.,0. );
+            s.material.shininess = 16;
+        }
+
+        { //Right Wall
+            squares.resize(squares.size() + 1);
+            Square & s = squares[squares.size() - 1];
+            s.setQuad(Vec3(-1., -1., 0.), Vec3(1., 0, 0.), Vec3(0., 1, 0.), 2., 2.);
+            s.translate(Vec3(0., 0., -2.));
+            s.scale(Vec3(2., 2., 1.));
+            s.rotate_y(-90);
+            s.build_arrays();
+            s.material.diffuse_material = Vec3( 0.,1.,0. );
+            s.material.specular_material = Vec3( 0.,1.,0. );
+            s.material.shininess = 16;
+        }
+
+        { //Floor
+            squares.resize(squares.size() + 1);
+            Square & s = squares[squares.size() - 1];
+            s.setQuad(Vec3(-1., -1., 0.), Vec3(1., 0, 0.), Vec3(0., 1, 0.), 2., 2.);
+            s.translate(Vec3(0., 0., -2.));
+            s.scale(Vec3(2., 2., 1.));
+            s.rotate_x(-90);
+            s.build_arrays();
+            s.material.diffuse_material = Vec3( 1.,1.,1. );
+            s.material.specular_material = Vec3( 1.,1.,1. );
+            s.material.shininess = 16;
+        }
+
+        { //Ceiling
+            squares.resize(squares.size() + 1);
+            Square & s = squares[squares.size() - 1];
+            s.setQuad(Vec3(-1., -1., 0.), Vec3(1., 0, 0.), Vec3(0., 1, 0.), 2., 2.);
+            s.translate(Vec3(0., 0., -2.));
+            s.scale(Vec3(2., 2., 1.));
+            s.rotate_x(90);
+            s.build_arrays();
+            s.material.diffuse_material = Vec3( 1.,1.,1. );
+            s.material.specular_material = Vec3( 1.,1.,1. );
+            s.material.shininess = 16;
+        }
+
+
+        { //GLASS Sphere
+            spheres.resize(spheres.size() + 1);
+            Sphere & s = spheres[spheres.size() - 1];
+            s.m_center = Vec3(1.0, -1.25, 0.5);
+            s.m_radius = 0.75f;
+            s.build_arrays();
+            s.material.type = Material_Glass;
+            s.material.diffuse_material = Vec3( 1.,0.,0. );
+            s.material.specular_material = Vec3( 1.,0.,0. );
+            s.material.shininess = 16;
+            s.material.transparency = 1.0;
+            s.material.index_medium = 2.9;
+        }
+
+
+        { //MIRRORED Sphere
+            spheres.resize(spheres.size() + 1); 
+            Sphere & s = spheres[spheres.size() - 1];
+            s.m_center = Vec3(-1.0, -1.25, -0.5);
+            s.m_radius = 0.75f;
+            s.build_arrays();
+            s.material.type = Material_Mirror;
+            s.material.diffuse_material = Vec3( 1.,1.,1. );
+            s.material.specular_material = Vec3(  1.,1.,1. );
+            s.material.shininess = 16;
+            s.material.transparency = 0.;
+            s.material.index_medium = 0.;
+        }
+
+        { // Moon
+            spheres.resize(spheres.size() + 1);
+            Sphere & s = spheres[spheres.size() - 1];
+            s.m_center = Vec3(-0.75, 0, -0.75);
+            s.m_radius = 0.5f;
+            s.build_arrays();
+            s.material.type = Material_Diffuse_Blinn_Phong;
+            s.material.diffuse_material = Vec3( 1.,1.,1. );
+            s.material.specular_material = Vec3(  1.,1.,1. );
+            s.material.shininess = 16;
+            // ppmLoader::load_ppm(s.material.texture, "assets/img/sphereTextures/s4.ppm");
+        }
+
+        {
+            meshes.resize( meshes.size() + 1 );
+            Mesh & mesh = meshes[meshes.size() - 1];
+            mesh.loadOFF("assets/models/gorilla18_fixed.obj.off");
+            mesh.scale(Vec3(0.0125));
+            mesh.translate(Vec3{0, -1.05, 0});
+            mesh.build_arrays();
+            mesh.material.type = Material_Glass;
+            mesh.material.diffuse_material = Vec3( 1.,1.,1. );
+            mesh.material.specular_material = Vec3( 1.,1.,1. );
+            mesh.material.shininess = 16;
+            mesh.material.transparency = 1.0;
+            mesh.material.index_medium = 1.2;
+        }
+
         sceneBvh =BVH_Node::buildBVH(squares, spheres, meshes);
     }
 };
