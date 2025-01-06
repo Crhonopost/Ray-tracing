@@ -4,4 +4,3 @@
 
 ![Refraction](assets/readme/refraction.png)
 
-## Features
