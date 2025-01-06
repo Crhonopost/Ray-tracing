@@ -98,7 +98,7 @@ RayIntersection RayTraceMesh::intersect( Ray const & ray ) const {
     RayTriangleIntersection closestIntersection;
     closestIntersection.t = FLT_MAX;
     closestIntersection.intersectionExists = false;
-
+    
     auto possibleTriangleIdx = triangleTree->intersect(ray, *boundingBox);
     
     for(auto triangleIdx: possibleTriangleIdx){

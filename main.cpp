@@ -202,8 +202,8 @@ void ray_trace_from_camera() {
 
     std::vector< Vec3 > image( w*h );
     unsigned int nbThreads = std::thread::hardware_concurrency() * maxThreadPercentage;
-    // ThreadPool pool(nbThreads);
-    ThreadPool pool(1);
+    ThreadPool pool(nbThreads);
+    // ThreadPool pool(1);
     std::atomic<int> completedTasks(0);
 
     {    
@@ -254,7 +254,7 @@ void ray_trace_from_camera() {
     f << std::endl;
     f.close();
 
-    GlobalLogger::getInstance().printAverages();
+    // GlobalLogger::getInstance().printAverages();
 }
 
 
@@ -384,12 +384,13 @@ int main (int argc, char ** argv) {
 
     camera.move(0., 0., -3.1);
     selected_scene=0;
-    scenes.resize(5);
+    scenes.resize(6);
     scenes[0].setup_final_scene();
-    scenes[1].setup_reflexion_scene();
-    scenes[2].setup_refraction_scene();
-    scenes[3].setup_test_scene();
-    scenes[4].setup_cornell_box();
+    scenes[1].setup_reflexion_chamber();
+    scenes[2].setup_cornell_box();
+    scenes[3].setup_reflexion_scene();
+    scenes[4].setup_refraction_scene();
+    scenes[5].setup_test_scene();
 
     scenes[selected_scene].applySettings(settings);
 

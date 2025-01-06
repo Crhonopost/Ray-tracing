@@ -86,8 +86,8 @@ struct Material {
     Vec3 getColorAt(double u, double v) {
         if (!hasTexture) return Vec3(1.0, 1.0, 1.0);
 
-        int pixelU = (int)(u * textureWidth * materialScale) % textureWidth;
-        int pixelV = (int)(v * textureHeight * materialScale) % textureHeight;
+        int pixelU = (int)(u * (double) textureWidth * materialScale) % textureWidth;
+        int pixelV = (int)(v * (double) textureHeight * materialScale) % textureHeight;
 
         int index = (pixelV * textureWidth + pixelU) * textureChannels;
         return Vec3(textureData[index] / 255.0, textureData[index + 1] / 255.0, textureData[index + 2] / 255.0);
@@ -113,10 +113,6 @@ struct Material {
     //     ppmLoader::RGB rgb = texture.data[pixelV * texture.w + pixelU];
 
     //     return Vec3(rgb.r, rgb.g, rgb.b) / 255.;
-    // }
-
-    // Vec3 getColorAt(double u, double v){
-    //     return getPixelAt(u, v, texture);
     // }
 
     Vec3 applyTBN(const Vec3 & normal, double u, double v){
